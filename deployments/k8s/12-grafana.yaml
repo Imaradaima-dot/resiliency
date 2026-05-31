@@ -25,35 +25,60 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: resiliency-secrets
-                  # Key name matches exactly what is in 01-secrets.yaml.template
-                  # This was the root cause of the CrashLoopBackOff in Step 8.
                   key: GRAFANA_ADMIN_PASSWORD
             - name: GF_USERS_ALLOW_SIGN_UP
               value: "false"
+            # Root URL uses the external IP — updated after LoadBalancer IP is assigned
             - name: GF_SERVER_ROOT_URL
-              value: "http://localhost:3000"
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
+              value: "http://%(domain)s:3000"
+            # Install Infinity datasource plugin so dashboards can call our REST API
+            - name: GF_INSTALL_PLUGINS
+              value: "yesoreyeram-infinity-datasource"
+          volumeMounts:
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+            - name: grafana-dashboards-config
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            - name: grafana-dashboards-json
+              mountPath: /var/lib/grafana/dashboards
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 15
+            initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 20
             failureThreshold: 3
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+        - name: grafana-dashboards-config
+          configMap:
+            name: grafana-dashboards-config
+        - name: grafana-dashboards-json
+          configMap:
+            name: grafana-dashboards-json
 ---
+# LoadBalancer — assigns a GCP external IP so Grafana is reachable
+# without kubectl port-forward. Get the IP with:
+#   kubectl get svc grafana -n resiliency
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,4 +90,4 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
-  type: ClusterIP
+  type: LoadBalancer

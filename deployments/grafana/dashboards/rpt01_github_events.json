@@ -1,0 +1,95 @@
+{
+  "id": null,
+  "uid": "rpt01-github-events",
+  "title": "GitHub Event Distribution (RPT-01)",
+  "description": "Event type counts and percentages from the serving zone",
+  "tags": ["resiliency", "rpt01"],
+  "refresh": "1m",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "piechart",
+      "title": "Event Type Share",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 10 },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["percent"],
+        "legendDisplayMode": "table",
+        "legendPlacement": "right"
+      },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/events/types",
+          "url_options": { "method": "GET" },
+          "root_selector": "",
+          "columns": [
+            { "selector": "event_type", "text": "Event Type", "type": "string" },
+            { "selector": "count", "text": "count", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "barchart",
+      "title": "Event Count by Type",
+      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 10 },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "event_type",
+        "tooltip": { "mode": "single" }
+      },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/events/types",
+          "url_options": { "method": "GET" },
+          "root_selector": "",
+          "columns": [
+            { "selector": "event_type", "text": "event_type", "type": "string" },
+            { "selector": "count", "text": "count", "type": "number" },
+            { "selector": "percentage", "text": "percentage", "type": "number" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Full Event Type Table",
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+      "options": {
+        "sortBy": [{ "displayName": "count", "desc": true }]
+      },
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "url": "/api/events/types",
+          "url_options": { "method": "GET" },
+          "root_selector": "",
+          "columns": [
+            { "selector": "event_type", "text": "Event Type", "type": "string" },
+            { "selector": "count", "text": "count", "type": "number" },
+            { "selector": "percentage", "text": "percentage", "type": "number" }
+          ]
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39
+}

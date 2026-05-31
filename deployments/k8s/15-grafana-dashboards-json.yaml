@@ -1,0 +1,241 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-json
+  namespace: resiliency
+data:
+  rpt01_github_events.json: |
+    {
+      "id": null,
+      "uid": "rpt01-github-events",
+      "title": "GitHub Event Distribution (RPT-01)",
+      "description": "Event type counts and percentages from the serving zone",
+      "tags": ["resiliency", "rpt01"],
+      "refresh": "1m",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "piechart",
+          "title": "Event Type Share",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 10 },
+          "options": {
+            "pieType": "donut",
+            "displayLabels": ["percent"],
+            "legendDisplayMode": "table",
+            "legendPlacement": "right"
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/events/types",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "event_type", "text": "Event Type", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "barchart",
+          "title": "Event Count by Type",
+          "gridPos": { "x": 6, "y": 0, "w": 18, "h": 10 },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" } },
+            "overrides": []
+          },
+          "options": {
+            "orientation": "horizontal",
+            "xField": "event_type",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/events/types",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "event_type", "text": "event_type", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" },
+                { "selector": "percentage", "text": "percentage", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "table",
+          "title": "Full Event Type Table",
+          "gridPos": { "x": 0, "y": 10, "w": 24, "h": 8 },
+          "options": {
+            "sortBy": [{ "displayName": "count", "desc": true }]
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/events/types",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "event_type", "text": "Event Type", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" },
+                { "selector": "percentage", "text": "percentage", "type": "number" }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
+  rpt04_region_health.json: |
+    {
+      "id": null,
+      "uid": "rpt04-region-health",
+      "title": "Region Health Monitor (RPT-04)",
+      "description": "Live region health status, latency, and write concern configuration",
+      "tags": ["resiliency", "rpt04"],
+      "refresh": "15s",
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Region Status",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                { "type": "value", "options": { "healthy": { "text": "HEALTHY", "color": "green", "index": 0 } } },
+                { "type": "value", "options": { "degraded": { "text": "DEGRADED", "color": "yellow", "index": 1 } } },
+                { "type": "value", "options": { "down": { "text": "DOWN", "color": "red", "index": 2 } } }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red", "value": null },
+                  { "color": "green", "value": 0 }
+                ]
+              }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/regions/health",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "status", "text": "status", "type": "string" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Ping Latency per Region",
+          "gridPos": { "x": 6, "y": 0, "w": 10, "h": 5 },
+          "options": {
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["min"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 200 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/regions/health",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "latency_ms", "text": "latency_ms", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "table",
+          "title": "Region Health Detail",
+          "gridPos": { "x": 0, "y": 5, "w": 20, "h": 8 },
+          "options": {
+            "sortBy": [{ "displayName": "latency_ms", "desc": false }]
+          },
+          "fieldConfig": {
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "status" },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      { "type": "value", "options": { "healthy": { "text": "healthy", "color": "green", "index": 0 } } },
+                      { "type": "value", "options": { "degraded": { "text": "degraded", "color": "yellow", "index": 1 } } },
+                      { "type": "value", "options": { "down": { "text": "down", "color": "red", "index": 2 } } }
+                    ]
+                  },
+                  { "id": "custom.displayMode", "value": "color-text" }
+                ]
+              }
+            ]
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "/api/regions/health",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "Region", "type": "string" },
+                { "selector": "status", "text": "status", "type": "string" },
+                { "selector": "latency_ms", "text": "latency_ms", "type": "number" },
+                { "selector": "write_concern", "text": "Write Concern", "type": "string" },
+                { "selector": "last_check", "text": "Last Check", "type": "timestamp" }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
