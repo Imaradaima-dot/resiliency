@@ -1,0 +1,8 @@
+NAME                           READY   STATUS    RESTARTS   AGE
+api-86649fcc4f-85n8p           1/1     Running   0          43m
+dashboard-8459bbf68f-9kcv2     1/1     Running   0          43m
+grafana-7d68b457b-4q4mw        1/1     Running   0          22m
+healthcheck-58d7c5b566-xmssf   1/1     Running   0          43m
+prometheus-68f6f7c6db-qk25b    1/1     Running   0          43m
+router-f6d4d4b4-pdqkp          1/1     Running   0          24m
+transformer-667bc5cd9d-dczck   1/1     Running   0          43m

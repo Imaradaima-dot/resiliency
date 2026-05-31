@@ -1,0 +1,13 @@
+[
+  {
+    _id: ObjectId('6a0e25da04a72224a580e854'),
+    region: 'asia',
+    checked_at: ISODate('2026-05-22T01:35:10.368Z'),
+    last_check: ISODate('2026-05-22T01:35:10.368Z'),
+    latency_ms: 9999,
+    read_preference: 'nearest',
+    replication_lag_ms: 9999,
+    status: 'down',
+    write_concern: 'w:1 health heartbeat; majority used for raw/processed writes'
+  }
+]

@@ -1,0 +1,12 @@
+{
+    "PreferredRegion": "asia",
+    "FallbackRegion": "europe",
+    "Reason": "selected lowest-latency healthy region with healthy fallback",
+    "CandidateCount": 4,
+    "HealthyCount": 4,
+    "DegradedCount": 0,
+    "DownCount": 0,
+    "StaleCount": 0,
+    "PreferredLatencyMs": 59,
+    "FallbackLatencyMs": 59
+}

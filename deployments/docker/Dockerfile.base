@@ -1,0 +1,34 @@
+# Base multi-stage Dockerfile. Each service has its own thin Dockerfile
+# that sets the CMD. This one is the ingestor example — see the pattern.
+#
+# Build arg SERVICE controls which cmd/ directory gets compiled.
+# Usage: docker build --build-arg SERVICE=ingestor -t ingestor .
+
+FROM golang:1.22-alpine AS builder
+
+# Install ca-certificates so TLS to Atlas works inside the container
+RUN apk add --no-cache ca-certificates git
+
+WORKDIR /src
+
+# Copy dependency files first for Docker layer caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the full source
+COPY . .
+
+ARG SERVICE=ingestor
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./cmd/${SERVICE}
+
+# ── Final minimal image ──────────────────────────────────────────────────────
+FROM alpine:3.20
+
+# ca-certificates needed for TLS to Atlas
+RUN apk add --no-cache ca-certificates wget
+
+COPY --from=builder /bin/service /bin/service
+
+EXPOSE 8080
+
+ENTRYPOINT ["/bin/service"]

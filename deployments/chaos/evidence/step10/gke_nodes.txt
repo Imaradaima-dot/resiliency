@@ -1,0 +1,3 @@
+NAME                                            STATUS   ROLES    AGE   VERSION               INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                             KERNEL-VERSION   CONTAINER-RUNTIME
+gke-resiliency-gke-default-pool-f051fa8c-9k4j   Ready    <none>   27m   v1.35.3-gke.1389002   10.128.0.10   35.193.58.216   Container-Optimized OS from Google   6.12.68+         containerd://2.1.5
+gke-resiliency-gke-default-pool-f051fa8c-rbmj   Ready    <none>   27m   v1.35.3-gke.1389002   10.128.0.9    35.253.138.71   Container-Optimized OS from Google   6.12.68+         containerd://2.1.5

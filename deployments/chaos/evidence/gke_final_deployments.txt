@@ -1,0 +1,10 @@
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS    IMAGES                                                                                           SELECTOR
+aggregator    0/0     0            0           66m   aggregator    us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-aggregator:step8    app=aggregator
+api           0/1     1            0           66m   api           us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step8           app=api
+dashboard     1/1     1            1           66m   dashboard     us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-dashboard:step8     app=dashboard
+grafana       1/1     1            1           66m   grafana       grafana/grafana:10.4.3                                                                           app=grafana
+healthcheck   0/1     1            0           66m   healthcheck   us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step8   app=healthcheck
+ingestor      0/0     0            0           66m   ingestor      us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-ingestor:step8      app=ingestor
+prometheus    1/1     1            1           66m   prometheus    prom/prometheus:v2.52.0                                                                          app=prometheus
+router        1/1     1            1           66m   router        us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-router:step8        app=router
+transformer   1/1     1            1           66m   transformer   us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-transformer:step8   app=transformer

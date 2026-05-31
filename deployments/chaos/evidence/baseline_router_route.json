@@ -1,0 +1,18 @@
+{
+    "ID": "6a0e294304a72224a580e915",
+    "DecisionID": "current",
+    "PreferredRegion": "asia",
+    "PreferredStatus": "healthy",
+    "PreferredLatencyMs": 29,
+    "FallbackRegion": "europe",
+    "FallbackStatus": "healthy",
+    "FallbackLatencyMs": 29,
+    "Reason": "selected lowest-latency healthy region with healthy fallback",
+    "CandidateCount": 4,
+    "HealthyCount": 4,
+    "DegradedCount": 0,
+    "DownCount": 0,
+    "StaleCount": 0,
+    "MaxAgeSeconds": 3600,
+    "DecidedAt": "2026-05-22T01:34:12.356Z"
+}

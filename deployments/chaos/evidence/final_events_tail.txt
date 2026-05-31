@@ -1,0 +1,80 @@
+56m         Normal    SuccessfulDelete    replicaset/api-5b48689fbd           Deleted pod: api-5b48689fbd-2t8lm
+56m         Normal    ScalingReplicaSet   deployment/healthcheck              Scaled down replica set healthcheck-7cc686459f from 1 to 0
+56m         Normal    ScalingReplicaSet   deployment/api                      Scaled down replica set api-5b48689fbd from 1 to 0
+56m         Normal    SuccessfulDelete    replicaset/healthcheck-7cc686459f   Deleted pod: healthcheck-7cc686459f-fb8sm
+56m         Warning   Failed              pod/dashboard-69d6654456-plftl      Error: ImagePullBackOff
+56m         Normal    BackOff             pod/dashboard-69d6654456-plftl      Back-off pulling image "resiliency-dashboard:latest"
+56m         Normal    SuccessfulDelete    replicaset/dashboard-69d6654456     Deleted pod: dashboard-69d6654456-plftl
+56m         Normal    ScalingReplicaSet   deployment/dashboard                Scaled down replica set dashboard-69d6654456 from 1 to 0
+54m         Warning   Failed              pod/router-5bdf574457-5jjhk         Error: ErrImagePull
+54m         Warning   Failed              pod/router-5bdf574457-5jjhk         Failed to pull image "resiliency-router:latest": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/resiliency-router:latest": failed to resolve reference "docker.io/library/resiliency-router:latest": docker.io/library/resiliency-router:latest: not found
+53m         Normal    Pulling             pod/aggregator-5bd6c47bc4-ncvp4     Pulling image "resiliency-aggregator:latest"
+53m         Warning   Failed              pod/aggregator-5bd6c47bc4-ncvp4     Error: ErrImagePull
+53m         Warning   Failed              pod/aggregator-5bd6c47bc4-ncvp4     Failed to pull image "resiliency-aggregator:latest": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/resiliency-aggregator:latest": failed to resolve reference "docker.io/library/resiliency-aggregator:latest": docker.io/library/resiliency-aggregator:latest: not found
+53m         Normal    Pulling             pod/ingestor-677f96c474-xcv5t       Pulling image "resiliency-ingestor:latest"
+53m         Warning   Failed              pod/ingestor-677f96c474-xcv5t       Error: ErrImagePull
+53m         Warning   Failed              pod/ingestor-677f96c474-xcv5t       Failed to pull image "resiliency-ingestor:latest": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/library/resiliency-ingestor:latest": failed to resolve reference "docker.io/library/resiliency-ingestor:latest": docker.io/library/resiliency-ingestor:latest: not found
+51m         Normal    Pulling             pod/router-5bdf574457-5jjhk         Pulling image "resiliency-router:latest"
+44m         Normal    Pulled              pod/aggregator-564c66d48f-tdw7j     Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-aggregator:step8" already present on machine and can be accessed by the pod
+44m         Normal    Created             pod/aggregator-564c66d48f-tdw7j     Container created
+44m         Normal    Started             pod/aggregator-564c66d48f-tdw7j     Container started
+41m         Warning   Failed              pod/aggregator-5bd6c47bc4-ncvp4     Error: ImagePullBackOff
+41m         Normal    BackOff             pod/aggregator-5bd6c47bc4-ncvp4     Back-off pulling image "resiliency-aggregator:latest"
+41m         Normal    BackOff             pod/ingestor-677f96c474-xcv5t       Back-off pulling image "resiliency-ingestor:latest"
+41m         Warning   Failed              pod/ingestor-677f96c474-xcv5t       Error: ImagePullBackOff
+41m         Normal    BackOff             pod/router-5bdf574457-5jjhk         Back-off pulling image "resiliency-router:latest"
+41m         Warning   Failed              pod/router-5bdf574457-5jjhk         Error: ImagePullBackOff
+39m         Warning   BackOff             pod/aggregator-564c66d48f-tdw7j     Back-off restarting failed container aggregator in pod aggregator-564c66d48f-tdw7j_resiliency(0ee616b3-c3a4-42f3-b677-3d930c3ada82)
+39m         Normal    Created             pod/router-6f446c7f5d-shrjm         Container created
+39m         Normal    Pulled              pod/router-6f446c7f5d-shrjm         Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-router:step8" already present on machine and can be accessed by the pod
+39m         Normal    Started             pod/router-6f446c7f5d-shrjm         Container started
+39m         Normal    Created             pod/ingestor-579d6f6c69-8p5wg       Container created
+39m         Normal    Started             pod/ingestor-579d6f6c69-8p5wg       Container started
+39m         Normal    Pulled              pod/ingestor-579d6f6c69-8p5wg       Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-ingestor:step8" already present on machine and can be accessed by the pod
+39m         Warning   BackOff             pod/ingestor-579d6f6c69-8p5wg       Back-off restarting failed container ingestor in pod ingestor-579d6f6c69-8p5wg_resiliency(849592f3-7f31-448a-b89a-4b013b5e2f4d)
+39m         Normal    ScalingReplicaSet   deployment/ingestor                 Scaled down replica set ingestor-677f96c474 from 1 to 0
+39m         Normal    ScalingReplicaSet   deployment/ingestor                 Scaled down replica set ingestor-579d6f6c69 from 1 to 0
+39m         Normal    SuccessfulDelete    replicaset/ingestor-677f96c474      Deleted pod: ingestor-677f96c474-xcv5t
+39m         Normal    SuccessfulDelete    replicaset/ingestor-579d6f6c69      Deleted pod: ingestor-579d6f6c69-8p5wg
+39m         Normal    SuccessfulDelete    replicaset/aggregator-564c66d48f    Deleted pod: aggregator-564c66d48f-tdw7j
+39m         Normal    ScalingReplicaSet   deployment/aggregator               Scaled down replica set aggregator-564c66d48f from 1 to 0
+39m         Normal    SuccessfulDelete    replicaset/aggregator-5bd6c47bc4    Deleted pod: aggregator-5bd6c47bc4-ncvp4
+39m         Normal    ScalingReplicaSet   deployment/aggregator               Scaled down replica set aggregator-5bd6c47bc4 from 1 to 0
+38m         Warning   BackOff             pod/router-6f446c7f5d-shrjm         Back-off restarting failed container router in pod router-6f446c7f5d-shrjm_resiliency(cc5bcdb7-e64d-4635-bf88-edc606847895)
+37m         Normal    ScalingReplicaSet   deployment/router                   Scaled down replica set router-5bdf574457 from 1 to 0
+37m         Normal    ScalingReplicaSet   deployment/router                   Scaled up replica set router-f6d4d4b4 from 0 to 1
+37m         Normal    SuccessfulDelete    replicaset/router-5bdf574457        Deleted pod: router-5bdf574457-5jjhk
+37m         Normal    Pulled              pod/router-f6d4d4b4-pdqkp           Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-router:step8" already present on machine and can be accessed by the pod
+37m         Normal    SuccessfulCreate    replicaset/router-f6d4d4b4          Created pod: router-f6d4d4b4-pdqkp
+37m         Normal    Created             pod/router-f6d4d4b4-pdqkp           Container created
+37m         Normal    Started             pod/router-f6d4d4b4-pdqkp           Container started
+37m         Normal    SuccessfulDelete    replicaset/router-6f446c7f5d        Deleted pod: router-6f446c7f5d-shrjm
+37m         Normal    ScalingReplicaSet   deployment/router                   Scaled down replica set router-6f446c7f5d from 1 to 0
+36m         Normal    Pulled              pod/grafana-c8bdbfd97-2jfqc         Container image "grafana/grafana:10.4.3" already present on machine and can be accessed by the pod
+36m         Warning   Failed              pod/grafana-c8bdbfd97-2jfqc         Error: couldn't find key GRAFANA_ADMIN_PASSWORD in Secret resiliency/resiliency-secrets
+35m         Normal    ScalingReplicaSet   deployment/grafana                  Scaled up replica set grafana-7d68b457b from 0 to 1
+35m         Normal    SuccessfulCreate    replicaset/grafana-7d68b457b        Created pod: grafana-7d68b457b-4q4mw
+35m         Normal    Started             pod/grafana-7d68b457b-4q4mw         Container started
+35m         Normal    Created             pod/grafana-7d68b457b-4q4mw         Container created
+35m         Normal    Pulled              pod/grafana-7d68b457b-4q4mw         Container image "grafana/grafana:10.4.3" already present on machine and can be accessed by the pod
+35m         Normal    ScalingReplicaSet   deployment/grafana                  Scaled down replica set grafana-c8bdbfd97 from 1 to 0
+35m         Normal    SuccessfulDelete    replicaset/grafana-c8bdbfd97        Deleted pod: grafana-c8bdbfd97-2jfqc
+11m         Normal    ScalingReplicaSet   deployment/healthcheck              Scaled down replica set healthcheck-58d7c5b566 from 1 to 0
+11m         Normal    Killing             pod/healthcheck-58d7c5b566-xmssf    Stopping container healthcheck
+11m         Normal    SuccessfulDelete    replicaset/healthcheck-58d7c5b566   Deleted pod: healthcheck-58d7c5b566-xmssf
+11m         Normal    SuccessfulCreate    replicaset/healthcheck-58d7c5b566   Created pod: healthcheck-58d7c5b566-pfvnh
+11m         Normal    ScalingReplicaSet   deployment/healthcheck              Scaled up replica set healthcheck-58d7c5b566 from 0 to 1
+11m         Normal    Pulling             pod/healthcheck-58d7c5b566-pfvnh    Pulling image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step8"
+11m         Normal    Pulled              pod/healthcheck-58d7c5b566-pfvnh    Successfully pulled image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step8" in 1.252s (1.252s including waiting). Image size: 13906167 bytes.
+8m25s       Normal    Killing             pod/api-86649fcc4f-85n8p            Stopping container api
+8m25s       Normal    Pulling             pod/api-86649fcc4f-mflp6            Pulling image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step8"
+8m25s       Normal    SuccessfulCreate    replicaset/api-86649fcc4f           Created pod: api-86649fcc4f-mflp6
+8m23s       Normal    Pulled              pod/api-86649fcc4f-mflp6            Successfully pulled image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step8" in 1.349s (1.349s including waiting). Image size: 14312088 bytes.
+4m32s       Normal    Pulled              pod/healthcheck-58d7c5b566-pfvnh    Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step8" already present on machine and can be accessed by the pod
+4m32s       Normal    Created             pod/healthcheck-58d7c5b566-pfvnh    Container created
+4m32s       Normal    Started             pod/healthcheck-58d7c5b566-pfvnh    Container started
+96s         Normal    Pulled              pod/api-86649fcc4f-mflp6            Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step8" already present on machine and can be accessed by the pod
+96s         Normal    Started             pod/api-86649fcc4f-mflp6            Container started
+96s         Normal    Created             pod/api-86649fcc4f-mflp6            Container created
+20s         Warning   BackOff             pod/healthcheck-58d7c5b566-pfvnh    Back-off restarting failed container healthcheck in pod healthcheck-58d7c5b566-pfvnh_resiliency(26841b2c-48f8-43ea-87a5-ccfbb25b45ec)
+10s         Warning   BackOff             pod/api-86649fcc4f-mflp6            Back-off restarting failed container api in pod api-86649fcc4f-mflp6_resiliency(4f90735e-bb80-4159-86b8-23e6dea4a371)

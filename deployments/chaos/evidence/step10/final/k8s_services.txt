@@ -1,0 +1,10 @@
+NAME          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+aggregator    ClusterIP   34.118.238.52    <none>        8085/TCP   27m
+api           ClusterIP   34.118.233.125   <none>        8080/TCP   27m
+dashboard     ClusterIP   34.118.225.53    <none>        8501/TCP   27m
+grafana       ClusterIP   34.118.232.109   <none>        3000/TCP   27m
+healthcheck   ClusterIP   34.118.237.167   <none>        8083/TCP   27m
+ingestor      ClusterIP   34.118.235.40    <none>        8081/TCP   27m
+prometheus    ClusterIP   34.118.231.154   <none>        9090/TCP   27m
+router        ClusterIP   34.118.231.63    <none>        8084/TCP   27m
+transformer   ClusterIP   34.118.238.5     <none>        8082/TCP   27m

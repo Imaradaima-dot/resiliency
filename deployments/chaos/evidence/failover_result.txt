@@ -1,0 +1,6 @@
+Preferred region before test: asia
+Preferred before: asia
+Preferred after:  europe
+Preferred status after: healthy
+Fallback after: us-east
+PASS: router avoided the failed preferred region and selected a healthy alternative.

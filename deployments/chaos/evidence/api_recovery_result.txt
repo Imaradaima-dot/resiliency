@@ -1,0 +1,3 @@
+Deleting API pod: api-86649fcc4f-85n8p
+Waiting for deployment "api" rollout to finish: 0 of 1 updated replicas are available...
+CHECK NEEDED: API did not recover within 300 seconds.

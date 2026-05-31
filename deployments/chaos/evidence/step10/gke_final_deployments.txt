@@ -1,0 +1,10 @@
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+aggregator    1/1     1            1           25m
+api           1/1     1            1           25m
+dashboard     1/1     1            1           25m
+grafana       1/1     1            1           25m
+healthcheck   1/1     1            1           25m
+ingestor      1/1     1            1           25m
+prometheus    1/1     1            1           25m
+router        1/1     1            1           25m
+transformer   1/1     1            1           25m

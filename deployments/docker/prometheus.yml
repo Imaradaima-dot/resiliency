@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "ingestor"
+    static_configs:
+      - targets: ["ingestor:8081"]
+    metrics_path: /metrics
+
+  - job_name: "transformer"
+    static_configs:
+      - targets: ["transformer:8082"]
+    metrics_path: /metrics
+
+  - job_name: "aggregator"
+    static_configs:
+      - targets: ["aggregator:8085"]
+    metrics_path: /metrics
+
+  - job_name: "healthcheck"
+    static_configs:
+      - targets: ["healthcheck:8083"]
+    metrics_path: /metrics
+
+  - job_name: "router"
+    static_configs:
+      - targets: ["router:8084"]
+    metrics_path: /metrics
+
+  - job_name: "api"
+    static_configs:
+      - targets: ["api:8080"]
+    metrics_path: /metrics

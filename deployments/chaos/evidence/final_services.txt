@@ -1,0 +1,10 @@
+NAME          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+aggregator    ClusterIP   34.118.228.75    <none>        8085/TCP   56m   app=aggregator
+api           ClusterIP   34.118.238.171   <none>        8080/TCP   56m   app=api
+dashboard     ClusterIP   34.118.238.12    <none>        8501/TCP   56m   app=dashboard
+grafana       ClusterIP   34.118.229.80    <none>        3000/TCP   56m   app=grafana
+healthcheck   ClusterIP   34.118.238.116   <none>        8083/TCP   56m   app=healthcheck
+ingestor      ClusterIP   34.118.234.174   <none>        8081/TCP   56m   app=ingestor
+prometheus    ClusterIP   34.118.234.243   <none>        9090/TCP   56m   app=prometheus
+router        ClusterIP   34.118.238.2     <none>        8084/TCP   56m   app=router
+transformer   ClusterIP   34.118.226.116   <none>        8082/TCP   56m   app=transformer

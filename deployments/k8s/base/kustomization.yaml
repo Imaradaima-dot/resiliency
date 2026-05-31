@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: resiliency
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - workloads.yaml
+  - observability.yaml
+
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml
+  - name: grafana-datasources
+    files:
+      - prometheus.yml=grafana-datasource-prometheus.yml
+  - name: grafana-dashboard-providers
+    files:
+      - dashboards.yml=grafana-dashboard-provider.yml
+  - name: grafana-dashboards
+    files:
+      - resiliency-observability.json=grafana-dashboards/resiliency-observability.json
+
+images:
+  - name: resiliency-ingestor
+    newName: resiliency-ingestor
+    newTag: latest
+  - name: resiliency-transformer
+    newName: resiliency-transformer
+    newTag: latest
+  - name: resiliency-aggregator
+    newName: resiliency-aggregator
+    newTag: latest
+  - name: resiliency-healthcheck
+    newName: resiliency-healthcheck
+    newTag: latest
+  - name: resiliency-router
+    newName: resiliency-router
+    newTag: latest
+  - name: resiliency-api
+    newName: resiliency-api
+    newTag: latest
+  - name: resiliency-dashboard
+    newName: resiliency-dashboard
+    newTag: latest

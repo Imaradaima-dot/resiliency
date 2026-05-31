@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: resiliency
+  labels:
+    app: api
+    version: "step10"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+        version: "step10"
+    spec:
+      containers:
+        - name: api
+          image: us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step10
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: resiliency-config
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: MONGODB_URI
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: GITHUB_TOKEN
+            - name: OWM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: OWM_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: resiliency
+spec:
+  selector:
+    app: api
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

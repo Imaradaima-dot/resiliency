@@ -1,0 +1,42 @@
+{
+    "generated_at": "2026-05-22T02:16:33.777681648Z",
+    "event_type_count": 16,
+    "total_github_events": 26676,
+    "top_event_type": {
+        "event_type": "PushEvent",
+        "count": 7557,
+        "percentage": 28.33,
+        "window_start": "2026-05-20T20:05:26Z",
+        "window_end": "2026-05-22T01:58:56Z",
+        "computed_at": "2026-05-22T02:13:42.469Z",
+        "region": "us-east1"
+    },
+    "weather_region_count": 4,
+    "avg_regional_temp_c": 20.887500000000003,
+    "health_region_count": 4,
+    "healthy_region_count": 4,
+    "degraded_region_count": 0,
+    "down_region_count": 0,
+    "current_routing": {
+        "decision_id": "current",
+        "preferred_region": "asia",
+        "preferred_status": "healthy",
+        "preferred_latency_ms": 29,
+        "fallback_region": "europe",
+        "fallback_status": "healthy",
+        "fallback_latency_ms": 29,
+        "reason": "selected lowest-latency healthy region with healthy fallback",
+        "candidate_count": 4,
+        "healthy_count": 4,
+        "degraded_count": 0,
+        "down_count": 0,
+        "stale_count": 0,
+        "max_age_seconds": 3600,
+        "decided_at": "2026-05-22T02:16:12.373Z"
+    },
+    "data_quality_reminders": [
+        "org_login can be null for personal GitHub repositories",
+        "weather sensor zero/null values should be flagged before aggregation",
+        "routing decisions depend on fresh region_health rows"
+    ]
+}

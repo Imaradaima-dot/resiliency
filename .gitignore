@@ -1,0 +1,33 @@
+# Secrets — never commit
+.env
+
+# Build artifacts
+bin/
+*.exe
+
+# Go test cache
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Step backup/archive files
+_archive/
+*.bak*
+*.zip
+
+# Local evidence bundles or exported archives
+step9_failover_evidence.zip
+
+# Local generated dashboard backups
+docker-compose.yml.bak_step10_region

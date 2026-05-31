@@ -1,0 +1,40 @@
+12m         Normal   Scheduled           pod/api-6cf5948fd4-98k8x            Successfully assigned resiliency/api-6cf5948fd4-98k8x to gke-resiliency-gke-default-pool-f051fa8c-9k4j
+12m         Normal   Killing             pod/api-6cf5948fd4-rsjfm            Stopping container api
+12m         Normal   Pulled              pod/api-6cf5948fd4-98k8x            Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step10" already present on machine and can be accessed by the pod
+12m         Normal   Started             pod/api-6cf5948fd4-98k8x            Container started
+12m         Normal   Created             pod/api-6cf5948fd4-98k8x            Container created
+6m40s       Normal   ScalingReplicaSet   deployment/healthcheck              Scaled up replica set healthcheck-7fcffd8cd7 from 0 to 1
+6m40s       Normal   SuccessfulCreate    replicaset/healthcheck-7fcffd8cd7   Created pod: healthcheck-7fcffd8cd7-2hbwg
+6m40s       Normal   Scheduled           pod/healthcheck-7fcffd8cd7-2hbwg    Successfully assigned resiliency/healthcheck-7fcffd8cd7-2hbwg to gke-resiliency-gke-default-pool-f051fa8c-rbmj
+6m39s       Normal   SuccessfulCreate    replicaset/api-56f499ccdf           Created pod: api-56f499ccdf-kh6hb
+6m39s       Normal   ScalingReplicaSet   deployment/api                      Scaled up replica set api-56f499ccdf from 0 to 1
+6m39s       Normal   Scheduled           pod/api-56f499ccdf-kh6hb            Successfully assigned resiliency/api-56f499ccdf-kh6hb to gke-resiliency-gke-default-pool-f051fa8c-rbmj
+6m39s       Normal   ScalingReplicaSet   deployment/router                   Scaled up replica set router-677b44757b from 0 to 1
+6m39s       Normal   SuccessfulCreate    replicaset/router-677b44757b        Created pod: router-677b44757b-z6qpp
+6m39s       Normal   Pulling             pod/router-677b44757b-z6qpp         Pulling image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-router:step10"
+6m39s       Normal   Scheduled           pod/router-677b44757b-z6qpp         Successfully assigned resiliency/router-677b44757b-z6qpp to gke-resiliency-gke-default-pool-f051fa8c-9k4j
+6m39s       Normal   Pulling             pod/healthcheck-7fcffd8cd7-2hbwg    Pulling image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step10"
+6m38s       Normal   Pulled              pod/api-56f499ccdf-kh6hb            Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step10" already present on machine and can be accessed by the pod
+6m38s       Normal   Started             pod/api-56f499ccdf-kh6hb            Container started
+6m38s       Normal   Created             pod/api-56f499ccdf-kh6hb            Container created
+6m37s       Normal   Started             pod/router-677b44757b-z6qpp         Container started
+6m37s       Normal   Created             pod/router-677b44757b-z6qpp         Container created
+6m37s       Normal   Started             pod/healthcheck-7fcffd8cd7-2hbwg    Container started
+6m37s       Normal   Created             pod/healthcheck-7fcffd8cd7-2hbwg    Container created
+6m37s       Normal   Pulled              pod/healthcheck-7fcffd8cd7-2hbwg    Successfully pulled image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-healthcheck:step10" in 1.545s (1.545s including waiting). Image size: 13810268 bytes.
+6m37s       Normal   Pulled              pod/router-677b44757b-z6qpp         Successfully pulled image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-router:step10" in 1.288s (1.288s including waiting). Image size: 13844085 bytes.
+6m27s       Normal   SuccessfulDelete    replicaset/api-6cf5948fd4           Deleted pod: api-6cf5948fd4-98k8x
+6m27s       Normal   Killing             pod/api-6cf5948fd4-98k8x            Stopping container api
+6m27s       Normal   ScalingReplicaSet   deployment/api                      Scaled down replica set api-6cf5948fd4 from 1 to 0
+6m25s       Normal   ScalingReplicaSet   deployment/healthcheck              Scaled down replica set healthcheck-5fcf998555 from 1 to 0
+6m25s       Normal   SuccessfulDelete    replicaset/router-b58987bff         Deleted pod: router-b58987bff-gm8j4
+6m25s       Normal   Killing             pod/router-b58987bff-gm8j4          Stopping container router
+6m25s       Normal   Killing             pod/healthcheck-5fcf998555-snjkz    Stopping container healthcheck
+6m25s       Normal   ScalingReplicaSet   deployment/router                   Scaled down replica set router-b58987bff from 1 to 0
+6m25s       Normal   SuccessfulDelete    replicaset/healthcheck-5fcf998555   Deleted pod: healthcheck-5fcf998555-snjkz
+38s         Normal   Scheduled           pod/api-56f499ccdf-rrrkc            Successfully assigned resiliency/api-56f499ccdf-rrrkc to gke-resiliency-gke-default-pool-f051fa8c-9k4j
+38s         Normal   Killing             pod/api-56f499ccdf-kh6hb            Stopping container api
+38s         Normal   SuccessfulCreate    replicaset/api-56f499ccdf           Created pod: api-56f499ccdf-rrrkc
+37s         Normal   Pulled              pod/api-56f499ccdf-rrrkc            Container image "us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-api:step10" already present on machine and can be accessed by the pod
+37s         Normal   Created             pod/api-56f499ccdf-rrrkc            Container created
+37s         Normal   Started             pod/api-56f499ccdf-rrrkc            Container started

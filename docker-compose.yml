@@ -1,0 +1,141 @@
+version: "3.9"
+
+# Full local development stack — all services active for Step 10.
+# All six application services + Prometheus + Grafana are uncommented.
+#
+# Usage:
+#   cp .env.example .env        # fill in GITHUB_TOKEN and OWM_API_KEY
+#   go mod tidy                 # run once before first Docker build
+#   docker compose up --build   # build and start everything
+
+services:
+
+  ingestor:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.ingestor
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  transformer:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.transformer
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  aggregator:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.aggregator
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8085:8085"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  healthcheck:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.healthcheck
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  router:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.router
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8084:8084"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.api
+    env_file: .env
+    environment:
+      - REGION=us-east
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.dashboard
+    env_file: .env
+    environment:
+      - API_BASE_URL=http://api:8080
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    volumes:
+      - ./deployments/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=resiliency
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes: {}

@@ -1,0 +1,8 @@
+NAME                           READY   STATUS             RESTARTS        AGE   IP            NODE                                            NOMINATED NODE   READINESS GATES
+api-86649fcc4f-mflp6           0/1     Running            8 (5m10s ago)   17m   10.120.1.28   gke-resiliency-gke-default-pool-cff67547-6gzc   <none>           <none>
+dashboard-8459bbf68f-9kcv2     1/1     Running            0               65m   10.120.1.26   gke-resiliency-gke-default-pool-cff67547-6gzc   <none>           <none>
+grafana-7d68b457b-4q4mw        1/1     Running            0               44m   10.120.0.28   gke-resiliency-gke-default-pool-cff67547-m729   <none>           <none>
+healthcheck-58d7c5b566-pfvnh   0/1     CrashLoopBackOff   8 (2m55s ago)   20m   10.120.1.27   gke-resiliency-gke-default-pool-cff67547-6gzc   <none>           <none>
+prometheus-68f6f7c6db-qk25b    1/1     Running            0               66m   10.120.0.22   gke-resiliency-gke-default-pool-cff67547-m729   <none>           <none>
+router-f6d4d4b4-pdqkp          1/1     Running            0               46m   10.120.0.27   gke-resiliency-gke-default-pool-cff67547-m729   <none>           <none>
+transformer-667bc5cd9d-dczck   1/1     Running            0               65m   10.120.0.24   gke-resiliency-gke-default-pool-cff67547-m729   <none>           <none>

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transformer
+  namespace: resiliency
+  labels:
+    app: transformer
+    version: "step10"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transformer
+  template:
+    metadata:
+      labels:
+        app: transformer
+        version: "step10"
+    spec:
+      containers:
+        - name: transformer
+          image: us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-transformer:step10
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: resiliency-config
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: MONGODB_URI
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: GITHUB_TOKEN
+            - name: OWM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: resiliency-secrets
+                  key: OWM_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transformer
+  namespace: resiliency
+spec:
+  selector:
+    app: transformer
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resiliency
+  labels:
+    app.kubernetes.io/name: global-service-resiliency
+    app.kubernetes.io/part-of: phase3-implementation

@@ -1,0 +1,2 @@
+NAME                   READY   STATUS             RESTARTS      AGE    IP            NODE                                            NOMINATED NODE   READINESS GATES
+api-86649fcc4f-mflp6   0/1     CrashLoopBackOff   6 (67s ago)   8m6s   10.120.1.28   gke-resiliency-gke-default-pool-cff67547-6gzc   <none>           <none>

@@ -1,0 +1,6 @@
+API Pod Recovery Test — Step 10
+Deleted pod: api-56f499ccdf-kh6hb
+Recovery time: 14.3 seconds (14301 ms)
+SLA target: ≤ 60 seconds
+API healthy after recovery: yes
+RESULT: PASS — API recovered within SLA target

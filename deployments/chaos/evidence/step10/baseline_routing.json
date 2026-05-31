@@ -1,0 +1,17 @@
+{
+    "decision_id": "current",
+    "preferred_region": "europe",
+    "preferred_status": "healthy",
+    "preferred_latency_ms": 62,
+    "fallback_region": "asia",
+    "fallback_status": "healthy",
+    "fallback_latency_ms": 62,
+    "reason": "selected lowest-latency healthy region with healthy fallback",
+    "candidate_count": 4,
+    "healthy_count": 4,
+    "degraded_count": 0,
+    "down_count": 0,
+    "stale_count": 0,
+    "max_age_seconds": 3600,
+    "decided_at": "2026-05-31T00:29:08.913Z"
+}

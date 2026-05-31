@@ -1,0 +1,8 @@
+Controlled Failover Test — Step 10
+Preferred region before test: europe
+Preferred before: europe
+Preferred after:  us-east
+Preferred status after: healthy
+Fallback after: asia
+Down count after: 1
+PASS: router avoided the failed preferred region and selected a healthy alternative.
