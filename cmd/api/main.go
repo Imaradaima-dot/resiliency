@@ -86,9 +86,11 @@ func main() {
 	// Dashboard endpoints — all read from serving zone
 	r.Get("/api/summary", makeSummaryHandler(dbClient, log))
 	r.Get("/api/events/types", makeEventTypesHandler(dbClient, log))
+	r.Get("/api/events/activity-categories", makeActivityCategoriesHandler(dbClient, log))
 	r.Get("/api/weather/regions", makeWeatherRegionsHandler(dbClient, log))
 	r.Get("/api/regions/health", makeRegionsHealthHandler(dbClient, log))
 	r.Get("/api/routing/current", makeRoutingCurrentHandler(dbClient, log))
+	r.Get("/api/routing/current/rows", makeRoutingRowsHandler(dbClient, log))
 
 	// Refresh endpoint — used by the failover test to trigger router re-evaluation
 	r.Post("/api/router/refresh", makeRouterRefreshHandler(dbClient, log))
@@ -258,6 +260,50 @@ func makeRoutingCurrentHandler(dbClient *db.Client, log *zap.Logger) http.Handle
 	}
 }
 
+func makeRoutingRowsHandler(dbClient *db.Client, log *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rtr := router.New(dbClient, 3600, log)
+
+		decision, err := rtr.Current(r.Context())
+		if err != nil {
+			http.Error(w, `{"error":"no routing decision"}`, http.StatusServiceUnavailable)
+			return
+		}
+
+		rows := []map[string]interface{}{
+			{
+				"decision_id":    decision.DecisionID,
+				"routing_role":   "Preferred",
+				"region":         decision.PreferredRegion,
+				"status":         decision.PreferredStatus,
+				"latency_ms":     decision.PreferredLatencyMs,
+				"reason":         decision.Reason,
+				"healthy_count":  decision.HealthyCount,
+				"degraded_count": decision.DegradedCount,
+				"down_count":     decision.DownCount,
+				"stale_count":    decision.StaleCount,
+				"decided_at":     decision.DecidedAt,
+			},
+			{
+				"decision_id":    decision.DecisionID,
+				"routing_role":   "Fallback",
+				"region":         decision.FallbackRegion,
+				"status":         decision.FallbackStatus,
+				"latency_ms":     decision.FallbackLatencyMs,
+				"reason":         decision.Reason,
+				"healthy_count":  decision.HealthyCount,
+				"degraded_count": decision.DegradedCount,
+				"down_count":     decision.DownCount,
+				"stale_count":    decision.StaleCount,
+				"decided_at":     decision.DecidedAt,
+			},
+		}
+
+		writeJSON(w, rows)
+		apiRequests.WithLabelValues("/api/routing/current/rows", "GET", "200").Inc()
+	}
+}
+
 func makeRouterRefreshHandler(dbClient *db.Client, log *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		rtr := router.New(dbClient, 3600, log)
@@ -278,4 +324,83 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 
 func roundTo2(f float64) float64 {
 	return float64(int(f*100)) / 100
+}
+
+// makeActivityCategoriesHandler serves RPT-02 — groups event types into
+// five developer activity categories for the Grafana activity composition dashboard.
+func makeActivityCategoriesHandler(dbClient *db.Client, log *zap.Logger) http.HandlerFunc {
+	// Maps each GitHub event type to a human-readable activity category.
+	categoryMap := map[string]string{
+		"PushEvent":                     "Code Change",
+		"CreateEvent":                   "Code Change",
+		"DeleteEvent":                   "Code Change",
+		"IssuesEvent":                   "Issue Collaboration",
+		"IssueCommentEvent":             "Issue Collaboration",
+		"PullRequestEvent":              "Code Review",
+		"PullRequestReviewEvent":        "Code Review",
+		"PullRequestReviewCommentEvent": "Code Review",
+		"ForkEvent":                     "Repository Activity",
+		"WatchEvent":                    "Repository Activity",
+		"ReleaseEvent":                  "Repository Activity",
+		"MemberEvent":                   "Repository Activity",
+		"CommitCommentEvent":            "Community / Watch",
+		"GollumEvent":                   "Community / Watch",
+		"PublicEvent":                   "Community / Watch",
+		"DiscussionEvent":               "Community / Watch",
+	}
+
+	type categoryRow struct {
+		ActivityCategory string  `json:"activity_category"`
+		Count            int64   `json:"count"`
+		Percentage       float64 `json:"percentage"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		cursor, err := dbClient.EventTypeCounts().Find(ctx, bson.M{},
+			options.Find().SetSort(bson.D{{Key: "count", Value: -1}}),
+		)
+		if err != nil {
+			http.Error(w, `{"error":"query failed"}`, http.StatusInternalServerError)
+			return
+		}
+		defer cursor.Close(ctx)
+
+		var rows []models.EventTypeCount
+		cursor.All(ctx, &rows)
+
+		// Aggregate counts per category
+		catCounts := map[string]int64{}
+		var total int64
+		for _, row := range rows {
+			cat, ok := categoryMap[row.EventType]
+			if !ok {
+				cat = "Other"
+			}
+			catCounts[cat] += row.Count
+			total += row.Count
+		}
+
+		// Build ordered result
+		order := []string{"Code Change", "Issue Collaboration", "Code Review", "Repository Activity", "Community / Watch", "Other"}
+		var result []categoryRow
+		for _, cat := range order {
+			count, ok := catCounts[cat]
+			if !ok || count == 0 {
+				continue
+			}
+			pct := 0.0
+			if total > 0 {
+				pct = roundTo2(float64(count) / float64(total) * 100)
+			}
+			result = append(result, categoryRow{
+				ActivityCategory: cat,
+				Count:            count,
+				Percentage:       pct,
+			})
+		}
+
+		writeJSON(w, result)
+		apiRequests.WithLabelValues("/api/events/activity-categories", "GET", "200").Inc()
+	}
 }

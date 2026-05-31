@@ -1,0 +1,217 @@
+{
+  "description": "Preferred and fallback routing decision from the active-active router.",
+  "id": null,
+  "panels": [
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api-ds"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "routing_role",
+              "text": "Routing Role",
+              "type": "string"
+            },
+            {
+              "selector": "region",
+              "text": "Region",
+              "type": "string"
+            },
+            {
+              "selector": "status",
+              "text": "Status",
+              "type": "string"
+            },
+            {
+              "selector": "latency_ms",
+              "text": "Latency ms",
+              "type": "number"
+            },
+            {
+              "selector": "healthy_count",
+              "text": "Healthy",
+              "type": "number"
+            },
+            {
+              "selector": "degraded_count",
+              "text": "Degraded",
+              "type": "number"
+            },
+            {
+              "selector": "down_count",
+              "text": "Down",
+              "type": "number"
+            },
+            {
+              "selector": "reason",
+              "text": "Decision Reason",
+              "type": "string"
+            },
+            {
+              "selector": "decided_at",
+              "text": "Decided At",
+              "type": "timestamp"
+            }
+          ],
+          "refId": "A",
+          "root_selector": "",
+          "source": "url",
+          "type": "json",
+          "url": "http://api:8080/api/routing/current/rows",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Current Routing Decision",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api-ds"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "barWidth": 0.97,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "routing_role",
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "routing_role",
+              "text": "routing_role",
+              "type": "string"
+            },
+            {
+              "selector": "latency_ms",
+              "text": "latency_ms",
+              "type": "number"
+            }
+          ],
+          "refId": "A",
+          "root_selector": "",
+          "source": "url",
+          "type": "json",
+          "url": "http://api:8080/api/routing/current/rows",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Preferred vs Fallback Latency",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api-ds"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "routing_role",
+              "text": "Routing Role",
+              "type": "string"
+            },
+            {
+              "selector": "region",
+              "text": "Region",
+              "type": "string"
+            },
+            {
+              "selector": "status",
+              "text": "Status",
+              "type": "string"
+            },
+            {
+              "selector": "reason",
+              "text": "Reason",
+              "type": "string"
+            }
+          ],
+          "refId": "A",
+          "root_selector": "",
+          "source": "url",
+          "type": "json",
+          "url": "http://api:8080/api/routing/current/rows",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Continuity Signal Details",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "resiliency",
+    "rpt05"
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Routing Decision & Continuity Signal (RPT-05)",
+  "uid": "rpt05-routing-decision",
+  "version": 1
+}

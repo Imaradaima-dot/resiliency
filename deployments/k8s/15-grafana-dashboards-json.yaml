@@ -31,7 +31,7 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/events/types",
+              "url": "http://api:8080/api/events/types",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
@@ -61,7 +61,7 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/events/types",
+              "url": "http://api:8080/api/events/types",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
@@ -86,7 +86,7 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/events/types",
+              "url": "http://api:8080/api/events/types",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
@@ -100,6 +100,241 @@ data:
       ],
       "schemaVersion": 39
     }
+
+  rpt02_activity_composition.json: |
+    {
+      "id": null,
+      "uid": "rpt02-activity-composition",
+      "title": "Developer Activity Composition (RPT-02)",
+      "description": "GitHub event types grouped into developer activity categories",
+      "tags": ["resiliency", "rpt02"],
+      "refresh": "1m",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "barchart",
+          "title": "Developer Activity by Category",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 10 },
+          "fieldConfig": {
+            "defaults": { "color": { "mode": "palette-classic" } }
+          },
+          "options": {
+            "orientation": "horizontal",
+            "xField": "activity_category",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/events/activity-categories",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "activity_category", "text": "activity_category", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "piechart",
+          "title": "Developer Activity Mix",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 10 },
+          "options": {
+            "pieType": "donut",
+            "displayLabels": ["percent"],
+            "legendDisplayMode": "table",
+            "legendPlacement": "right"
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/events/activity-categories",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "activity_category", "text": "Activity Category", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "table",
+          "title": "Activity Breakdown Table",
+          "gridPos": { "x": 0, "y": 10, "w": 24, "h": 6 },
+          "options": {
+            "sortBy": [{ "displayName": "count", "desc": true }]
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/events/activity-categories",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "activity_category", "text": "activity_category", "type": "string" },
+                { "selector": "count", "text": "count", "type": "number" },
+                { "selector": "percentage", "text": "percentage", "type": "number" }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
+
+  rpt03_regional_weather.json: |
+    {
+      "id": null,
+      "uid": "rpt03-regional-weather",
+      "title": "Regional Weather Dashboard (RPT-03)",
+      "description": "Average temperature, humidity, and wind speed per region from OpenWeatherMap",
+      "tags": ["resiliency", "rpt03"],
+      "refresh": "5m",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "barchart",
+          "title": "Average Temperature by Region (°C)",
+          "gridPos": { "x": 0, "y": 0, "w": 8, "h": 9 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "region",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/weather/regions",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "region", "type": "string" },
+                { "selector": "avg_temp_c", "text": "avg_temp_c", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "barchart",
+          "title": "Average Humidity by Region (%)",
+          "gridPos": { "x": 8, "y": 0, "w": 8, "h": 9 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "region",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/weather/regions",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "region", "type": "string" },
+                { "selector": "avg_humidity", "text": "avg_humidity", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "barchart",
+          "title": "Average Wind Speed by Region (m/s)",
+          "gridPos": { "x": 16, "y": 0, "w": 8, "h": 9 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "velocityms",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "region",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/weather/regions",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "region", "type": "string" },
+                { "selector": "avg_wind_speed", "text": "avg_wind_speed", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "table",
+          "title": "Regional Weather Detail",
+          "gridPos": { "x": 0, "y": 9, "w": 24, "h": 7 },
+          "options": {
+            "sortBy": [{ "displayName": "avg_temp_c", "desc": true }]
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/weather/regions",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "region", "type": "string" },
+                { "selector": "city_count", "text": "city_count", "type": "number" },
+                { "selector": "avg_temp_c", "text": "avg_temp_c", "type": "number" },
+                { "selector": "avg_humidity", "text": "avg_humidity", "type": "number" },
+                { "selector": "avg_wind_speed", "text": "avg_wind_speed", "type": "number" },
+                { "selector": "observation_ts", "text": "observation_ts", "type": "timestamp" },
+                { "selector": "computed_at", "text": "computed_at", "type": "timestamp" }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
+
   rpt04_region_health.json: |
     {
       "id": null,
@@ -113,13 +348,13 @@ data:
         {
           "id": 1,
           "type": "stat",
-          "title": "Region Status",
+          "title": "Regions Monitored",
           "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
           "options": {
-            "textMode": "value_and_name",
-            "colorMode": "background",
+            "textMode": "value",
+            "colorMode": "value",
             "graphMode": "none",
-            "reduceOptions": { "calcs": ["lastNotNull"] }
+            "reduceOptions": { "calcs": ["count"] }
           },
           "fieldConfig": {
             "defaults": {
@@ -143,11 +378,11 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/regions/health",
+              "url": "http://api:8080/api/regions/health",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
-                { "selector": "status", "text": "status", "type": "string" }
+                { "selector": "latency_ms", "text": "regions_monitored", "type": "number" }
               ]
             }
           ]
@@ -182,7 +417,7 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/regions/health",
+              "url": "http://api:8080/api/regions/health",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
@@ -223,7 +458,7 @@ data:
               "refId": "A",
               "type": "json",
               "source": "url",
-              "url": "/api/regions/health",
+              "url": "http://api:8080/api/regions/health",
               "url_options": { "method": "GET" },
               "root_selector": "",
               "columns": [
@@ -239,3 +474,216 @@ data:
       ],
       "schemaVersion": 39
     }
+
+  rpt05_routing_decision.json: |
+    {
+      "id": null,
+      "uid": "rpt05-routing-decision",
+      "title": "Routing Decision & Continuity Signal (RPT-05)",
+      "description": "Current preferred and fallback routing regions, latency, and decision metadata",
+      "tags": ["resiliency", "rpt05"],
+      "refresh": "15s",
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Preferred Region",
+          "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "fixedColor": "green", "mode": "fixed" }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "Preferred Region", "type": "string" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Preferred Latency",
+          "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+          "options": {
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 200 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "latency_ms", "text": "Preferred Latency", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Fallback Region",
+          "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+          "options": {
+            "textMode": "value_and_name",
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "fixedColor": "blue", "mode": "fixed" }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "region", "text": "Fallback Region", "type": "string" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Fallback Latency",
+          "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+          "options": {
+            "textMode": "auto",
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 200 },
+                  { "color": "red", "value": 500 }
+                ]
+              }
+            }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "latency_ms", "text": "Fallback Latency", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "barchart",
+          "title": "Preferred vs Fallback Route Latency",
+          "gridPos": { "x": 0, "y": 4, "w": 16, "h": 9 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "color": { "mode": "palette-classic" }
+            }
+          },
+          "options": {
+            "orientation": "vertical",
+            "xField": "routing_role",
+            "tooltip": { "mode": "single" }
+          },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "routing_role", "text": "routing_role", "type": "string" },
+                { "selector": "latency_ms", "text": "latency_ms", "type": "number" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "table",
+          "title": "Routing Decision Detail",
+          "gridPos": { "x": 0, "y": 13, "w": 24, "h": 6 },
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "resiliency-api-ds" },
+          "targets": [
+            {
+              "refId": "A",
+              "type": "json",
+              "source": "url",
+              "url": "http://api:8080/api/routing/current/rows",
+              "url_options": { "method": "GET" },
+              "root_selector": "",
+              "columns": [
+                { "selector": "decision_id", "text": "Decision ID", "type": "string" },
+                { "selector": "reason", "text": "Reason", "type": "string" },
+                { "selector": "healthy_count", "text": "Healthy", "type": "number" },
+                { "selector": "degraded_count", "text": "Degraded", "type": "number" },
+                { "selector": "down_count", "text": "Down", "type": "number" },
+                { "selector": "stale_count", "text": "Stale", "type": "number" },
+                { "selector": "decided_at", "text": "Decided At", "type": "timestamp" }
+              ]
+            }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
+
