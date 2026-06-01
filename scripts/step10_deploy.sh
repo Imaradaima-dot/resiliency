@@ -24,7 +24,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 source "${REPO_ROOT}/deployments/gke/gke.env"
+GKE_REGION="${REGION}"
 source "${REPO_ROOT}/.env"
+REGION="${GKE_REGION}"
 
 K8S_DIR="${REPO_ROOT}/deployments/k8s"
 SECRETS_TEMPLATE="${K8S_DIR}/01-secrets.yaml.template"
@@ -113,10 +115,10 @@ kubectl apply -f "${K8S_DIR}/00-namespace.yaml"
 echo ""
 echo ">> Generating Kubernetes Secret from .env..."
 
-MONGODB_URI_B64=$(echo -n "${MONGODB_URI}" | base64)
-GITHUB_TOKEN_B64=$(echo -n "${GITHUB_TOKEN:-}" | base64)
-OWM_API_KEY_B64=$(echo -n "${OWM_API_KEY:-}" | base64)
-GRAFANA_PASS_B64=$(echo -n "resiliency" | base64)
+MONGODB_URI_B64=$(echo -n "${MONGODB_URI}" | base64 | tr -d '\n')
+GITHUB_TOKEN_B64=$(echo -n "${GITHUB_TOKEN:-}" | base64 | tr -d '\n')
+OWM_API_KEY_B64=$(echo -n "${OWM_API_KEY:-}" | base64 | tr -d '\n')
+GRAFANA_PASS_B64=$(echo -n "resiliency" | base64 | tr -d '\n')
 
 sed \
   -e "s|__MONGODB_URI_B64__|${MONGODB_URI_B64}|g" \
@@ -133,6 +135,11 @@ echo "   ✓ Secret applied and temp file removed."
 echo ""
 echo ">> Applying ConfigMap and Prometheus config..."
 kubectl apply -f "${K8S_DIR}/02-configmap.yaml"
+kubectl patch configmap resiliency-config \
+  --namespace "${NAMESPACE}" \
+  --type merge \
+  --patch "{\"data\":{\"REGION\":\"${REGION}\"}}"
+echo "   ✓ REGION patched to ${REGION}."
 kubectl apply -f "${K8S_DIR}/03-prometheus-config.yaml"
 
 # ── Step 7: Deploy all application services ──────────────────────────────────
@@ -147,7 +154,10 @@ for MANIFEST in \
   "${K8S_DIR}/09-api.yaml" \
   "${K8S_DIR}/10-dashboard.yaml" \
   "${K8S_DIR}/11-prometheus.yaml" \
-  "${K8S_DIR}/12-grafana.yaml"; do
+  "${K8S_DIR}/12-grafana.yaml" \
+  "${K8S_DIR}/13-grafana-datasources.yaml" \
+  "${K8S_DIR}/14-grafana-dashboards-config.yaml" \
+  "${K8S_DIR}/15-grafana-dashboards-json.yaml"; do
   echo "   Applying $(basename ${MANIFEST})..."
   kubectl apply -f "${MANIFEST}"
 done

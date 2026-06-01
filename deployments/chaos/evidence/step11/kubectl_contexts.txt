@@ -1,0 +1,4 @@
+CURRENT   NAME                                                      CLUSTER                                                   AUTHINFO                                                  NAMESPACE
+          docker-desktop                                            docker-desktop                                            docker-desktop                                            
+          gke_dataengineering-496300_us-central1-a_resiliency-gke   gke_dataengineering-496300_us-central1-a_resiliency-gke   gke_dataengineering-496300_us-central1-a_resiliency-gke   
+*         gke_dataengineering-496300_us-west1-a_resiliency-gke-b    gke_dataengineering-496300_us-west1-a_resiliency-gke-b    gke_dataengineering-496300_us-west1-a_resiliency-gke-b    

@@ -1,0 +1,10 @@
+NAME                           READY   STATUS    RESTARTS   AGE     IP           NODE                                              NOMINATED NODE   READINESS GATES
+aggregator-db8fffbc6-hsr48     1/1     Running   0          4m49s   10.20.0.7    gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>
+api-56d7bf66fb-qbz2r           1/1     Running   0          4m44s   10.20.1.14   gke-resiliency-gke-b-default-pool-3d833cd8-svnh   <none>           <none>
+dashboard-54f99c658f-bqdc4     1/1     Running   0          4m42s   10.20.0.9    gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>
+grafana-7b75856c8-bn7bc        1/1     Running   0          4m39s   10.20.1.16   gke-resiliency-gke-b-default-pool-3d833cd8-svnh   <none>           <none>
+healthcheck-5fcf998555-rt99z   1/1     Running   0          4m47s   10.20.1.13   gke-resiliency-gke-b-default-pool-3d833cd8-svnh   <none>           <none>
+ingestor-f74c8946d-fqckq       1/1     Running   0          4m53s   10.20.0.5    gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>
+prometheus-ff88b6ff7-hcr5q     1/1     Running   0          4m41s   10.20.1.15   gke-resiliency-gke-b-default-pool-3d833cd8-svnh   <none>           <none>
+router-b58987bff-2m9zm         1/1     Running   0          4m46s   10.20.0.8    gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>
+transformer-5ddf86d899-rnqjl   1/1     Running   0          4m51s   10.20.0.6    gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>

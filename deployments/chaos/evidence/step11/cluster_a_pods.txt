@@ -1,0 +1,10 @@
+NAME                           READY   STATUS    RESTARTS   AGE   IP            NODE                                            NOMINATED NODE   READINESS GATES
+aggregator-58697759d7-2r7th    1/1     Running   0          14m   10.116.0.20   gke-resiliency-gke-default-pool-3a4e6205-6qsl   <none>           <none>
+api-778d7bf489-6vqwf           1/1     Running   0          14m   10.116.1.16   gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>
+dashboard-54f99c658f-9v5nw     1/1     Running   0          39m   10.116.1.9    gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>
+grafana-7b75856c8-h76dc        1/1     Running   0          39m   10.116.1.10   gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>
+healthcheck-5f55fd7d78-w5ct9   1/1     Running   0          14m   10.116.1.15   gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>
+ingestor-7499fd64bc-mwrpz      1/1     Running   0          14m   10.116.1.14   gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>
+prometheus-ff88b6ff7-hqd9m     1/1     Running   0          39m   10.116.0.15   gke-resiliency-gke-default-pool-3a4e6205-6qsl   <none>           <none>
+router-7777f74b4-f5556         1/1     Running   0          14m   10.116.0.21   gke-resiliency-gke-default-pool-3a4e6205-6qsl   <none>           <none>
+transformer-68d55749b8-6r4vw   1/1     Running   0          14m   10.116.1.13   gke-resiliency-gke-default-pool-3a4e6205-4mrh   <none>           <none>

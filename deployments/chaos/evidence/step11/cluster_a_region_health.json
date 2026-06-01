@@ -1,0 +1,79 @@
+[
+    {
+        "id": "6a1b5453dd7b229344bd2727",
+        "region": "asia",
+        "status": "healthy",
+        "latency_ms": 59,
+        "replication_lag_ms": 14,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T07:05:37.9Z",
+        "checked_at": "2026-05-31T07:05:37.9Z"
+    },
+    {
+        "id": "6a1b5453dd7b229344bd2726",
+        "region": "europe",
+        "status": "healthy",
+        "latency_ms": 59,
+        "replication_lag_ms": 14,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T07:05:37.9Z",
+        "checked_at": "2026-05-31T07:05:37.9Z"
+    },
+    {
+        "id": "6a1cb5f8dd7b229344bf3d5c",
+        "region": "us-central1",
+        "status": "healthy",
+        "latency_ms": 1,
+        "replication_lag_ms": 2,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T22:42:38.381Z",
+        "checked_at": "2026-05-31T22:42:38.381Z"
+    },
+    {
+        "id": "6a1b5453dd7b229344bd2724",
+        "region": "us-east",
+        "status": "healthy",
+        "latency_ms": 34,
+        "replication_lag_ms": 68,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T22:42:32.666Z",
+        "checked_at": "2026-05-31T22:42:32.666Z"
+    },
+    {
+        "id": "6a1ca649dd7b229344bf35e8",
+        "region": "us-east1",
+        "status": "healthy",
+        "latency_ms": 29,
+        "replication_lag_ms": 58,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T22:42:43.571Z",
+        "checked_at": "2026-05-31T22:42:43.571Z"
+    },
+    {
+        "id": "6a1b5453dd7b229344bd2725",
+        "region": "us-west",
+        "status": "healthy",
+        "latency_ms": 79,
+        "replication_lag_ms": 19,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T07:05:37.9Z",
+        "checked_at": "2026-05-31T07:05:37.9Z"
+    },
+    {
+        "id": "6a1cb858dd7b229344bf406a",
+        "region": "us-west1",
+        "status": "healthy",
+        "latency_ms": 38,
+        "replication_lag_ms": 76,
+        "write_concern": "w:1 health heartbeat; majority used for raw/processed writes",
+        "read_preference": "nearest",
+        "last_check": "2026-05-31T22:42:46.792Z",
+        "checked_at": "2026-05-31T22:42:46.792Z"
+    }
+]

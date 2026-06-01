@@ -1,0 +1,22 @@
+Two-Cluster Active-Active Evidence Summary
+Generated: Sun May 31 22:43:05 UTC 2026
+
+CLUSTER A: resiliency-gke (us-central1-a)
+  Pods Running             : 9
+  Routing refresh response : us-central1 (1 ms preferred latency)
+
+CLUSTER B: resiliency-gke-b (us-west1-a)
+  Pods Running             : 9
+  Routing refresh response : us-central1 (1 ms preferred latency)
+
+ACTIVE-ACTIVE VALIDATION:
+  Both GKE clusters are RUNNING simultaneously.
+  Both clusters run the same 9-pod service stack.
+  Both clusters connect to the same MongoDB Atlas M0 instance and serve the same data.
+  Each cluster has its own Kubernetes context, node pool, pods, services, and REGION ConfigMap.
+  The API in each cluster can trigger and return a routing decision.
+
+IMPORTANT HONEST FRAMING:
+  This validates the two active GKE clusters and application-layer routing logic.
+  This does not validate GCP Global Load Balancer traffic distribution.
+  This does not validate true multi-region MongoDB replication because Atlas M0 is single-region.

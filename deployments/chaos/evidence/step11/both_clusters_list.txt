@@ -1,0 +1,3 @@
+NAME              LOCATION       MASTER_VERSION      MASTER_IP        MACHINE_TYPE   NODE_VERSION        NUM_NODES  STATUS   STACK_TYPE
+resiliency-gke    us-central1-a  1.35.3-gke.1389002  136.113.101.100  e2-standard-2  1.35.3-gke.1389002  2          RUNNING  IPV4
+resiliency-gke-b  us-west1-a     1.35.3-gke.1389002  35.247.41.88     e2-standard-2  1.35.3-gke.1389002  2          RUNNING  IPV4
