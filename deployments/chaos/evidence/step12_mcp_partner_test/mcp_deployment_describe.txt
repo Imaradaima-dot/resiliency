@@ -1,0 +1,45 @@
+Name:                   mcp-server
+Namespace:              resiliency
+CreationTimestamp:      Sun, 31 May 2026 23:57:54 -0500
+Labels:                 app=mcp-server
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=mcp-server
+Replicas:               1 desired | 1 updated | 1 total | 1 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=mcp-server
+  Containers:
+   mcp-server:
+    Image:      us-central1-docker.pkg.dev/dataengineering-496300/resiliency-repo/resiliency-mcp:partner-test
+    Port:       8090/TCP
+    Host Port:  0/TCP
+    Limits:
+      cpu:     200m
+      memory:  128Mi
+    Requests:
+      cpu:      50m
+      memory:   64Mi
+    Liveness:   http-get http://:8090/health delay=10s timeout=1s period=30s #success=1 #failure=3
+    Readiness:  http-get http://:8090/health delay=5s timeout=1s period=10s #success=1 #failure=3
+    Environment Variables from:
+      resiliency-secrets  Secret  Optional: false
+    Environment:
+      MCP_TRANSPORT:  http
+      MCP_PORT:       8090
+    Mounts:           <none>
+  Volumes:            <none>
+  Node-Selectors:     <none>
+  Tolerations:        <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Available      True    MinimumReplicasAvailable
+  Progressing    True    NewReplicaSetAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   mcp-server-6d589c6845 (1/1 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  5m58s  deployment-controller  Scaled up replica set mcp-server-6d589c6845 from 0 to 1

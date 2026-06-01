@@ -1,0 +1,2 @@
+NAME                          READY   STATUS    RESTARTS   AGE     IP           NODE                                              NOMINATED NODE   READINESS GATES
+mcp-server-6d589c6845-225fc   1/1     Running   0          5m57s   10.20.0.10   gke-resiliency-gke-b-default-pool-3d833cd8-7jtp   <none>           <none>

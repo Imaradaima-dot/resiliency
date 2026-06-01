@@ -1,0 +1,1 @@
+mcp-server    ClusterIP      34.118.228.3     <none>        8090/TCP         5m57s
