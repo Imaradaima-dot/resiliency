@@ -1,0 +1,105 @@
+# k8s/mcp.yaml
+# Deploys the resiliency MCP server to GKE.
+#
+# The server runs in HTTP/StreamableHTTP mode (MCP_TRANSPORT=http) so it can
+# be reached over the network by Claude Desktop or any MCP-compatible client.
+#
+# ── One-time setup ────────────────────────────────────────────────────────────
+#
+#  1. Build and push the image (SERVICE=mcp):
+#       docker buildx build --platform linux/amd64 \
+#         --build-arg SERVICE=mcp \
+#         -t gcr.io/msds-432-g2-497302/resiliency-mcp:latest \
+#         --push .
+#
+#  2. Get your IPv4 and replace 157.50.106.37 below:
+#       curl -s -4 https://ifconfig.me
+#
+#  3. Apply:
+#       kubectl apply -f k8s/mcp.yaml
+#
+#  4. Get the external IP (1-2 min):
+#       kubectl get svc mcp-server -n resiliency -w
+#
+#  5. Connect Claude Desktop — add to claude_desktop_config.json:
+#       {
+#         "mcpServers": {
+#           "resiliency": {
+#             "type": "http",
+#             "url": "http://<EXTERNAL-IP>:8090/mcp"
+#           }
+#         }
+#       }
+
+---
+# ── MCP Deployment ────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-server
+  namespace: resiliency
+  labels:
+    app: mcp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-server
+  template:
+    metadata:
+      labels:
+        app: mcp-server
+    spec:
+      containers:
+        - name: mcp-server
+          image: gcr.io/msds-432-g2-497302/resiliency-mcp:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8090
+          env:
+            - name: MCP_TRANSPORT
+              value: "http"
+            - name: MCP_PORT
+              value: "8090"
+          envFrom:
+            - secretRef:
+                name: resiliency-secrets   # provides MONGO_URI
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ── MCP Service — LoadBalancer, IP-whitelisted ────────────────────────────────
+# Replace 157.50.106.37 with: curl -s -4 https://ifconfig.me
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+  namespace: resiliency
+spec:
+  selector:
+    app: mcp-server
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - "157.50.106.37/32"    # replace: curl -s -4 https://ifconfig.me
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090

@@ -1,0 +1,375 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {
+    "list": []
+  },
+  "description": "RPT-04 \u2014 Active-active region health monitor. One stat panel per region showing status and ping latency.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "title": "Region Health \u2014 Live Status",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "healthy": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "HEALTHY"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "degraded": {
+                  "color": "orange",
+                  "index": 1,
+                  "text": "DEGRADED"
+                }
+              },
+              "type": "value"
+            },
+            {
+              "options": {
+                "down": {
+                  "color": "red",
+                  "index": 2,
+                  "text": "DOWN"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^status$/",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "region",
+              "text": "Region",
+              "type": "string"
+            },
+            {
+              "selector": "status",
+              "text": "status",
+              "type": "string"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "resiliency-api"
+          },
+          "refId": "A",
+          "source": "url",
+          "type": "json",
+          "url": "http://healthcheck.resiliency.svc.cluster.local:8080/api/region-health",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Region Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^latency_ms$/",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "region",
+              "text": "Region",
+              "type": "string"
+            },
+            {
+              "selector": "latency_ms",
+              "text": "latency_ms",
+              "type": "number"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "resiliency-api"
+          },
+          "refId": "B",
+          "source": "url",
+          "type": "json",
+          "url": "http://healthcheck.resiliency.svc.cluster.local:8080/api/region-health",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Ping Latency per Region",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "resiliency-api"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "healthy": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "degraded": {
+                        "color": "orange",
+                        "index": 1
+                      },
+                      "down": {
+                        "color": "red",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "latency_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "region"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "region",
+              "text": "Region",
+              "type": "string"
+            },
+            {
+              "selector": "status",
+              "text": "status",
+              "type": "string"
+            },
+            {
+              "selector": "latency_ms",
+              "text": "latency_ms",
+              "type": "number"
+            },
+            {
+              "selector": "write_concern",
+              "text": "Write Concern",
+              "type": "string"
+            },
+            {
+              "selector": "last_check",
+              "text": "Last Check",
+              "type": "timestamp"
+            }
+          ],
+          "datasource": {
+            "type": "yesoreyeram-infinity-datasource",
+            "uid": "resiliency-api"
+          },
+          "refId": "C",
+          "source": "url",
+          "type": "json",
+          "url": "http://healthcheck.resiliency.svc.cluster.local:8080/api/region-health",
+          "url_options": {
+            "method": "GET"
+          }
+        }
+      ],
+      "title": "Region Health Detail",
+      "type": "table"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "tags": [
+    "resiliency",
+    "health",
+    "active-active"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Region Health Monitor (RPT-04)",
+  "uid": "region-health-rpt04",
+  "version": 1
+}

@@ -1,0 +1,25 @@
+# 1. Generate Fernet key
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# 2. Create Airflow secret
+kubectl create secret generic airflow-secrets \
+  --from-literal=AIRFLOW__CORE__FERNET_KEY="-gAxyMOEJc2UVQE48oInvmratdWOt7ehw2V_t63avNM=" \
+  --from-literal=AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://airflow:airflow@airflow-postgres-0.airflow-postgres.resiliency.svc.cluster.local:5432/airflow" \
+  --from-literal=AIRFLOW__WEBSERVER__SECRET_KEY="LpPKb8CkZyIxqDOll4859zDeZKYkLpgD" \
+  --from-literal=POSTGRES_PASSWORD="airflow" \
+  -n resiliency
+
+
+# 3. Apply manifests
+kubectl apply -f k8s/airflow.yaml
+
+# 4. Copy DAG to the scheduler pod
+SCHED=$(kubectl get pod -n resiliency -l app=airflow-scheduler -o name | head -1) kubectl cp dags/resiliency_pipeline.py resiliency/${SCHED#pod/}:/opt/airflow/dags/
+
+# 5. Create admin user
+kubectl exec -n resiliency deploy/airflow-scheduler -- \
+  airflow users create --username admin --password admin \
+  --firstname Admin --lastname User --role Admin --email admin@example.com
+
+# 6. Get the webserver NodePort
+kubectl get svc airflow-webserver -n resiliency

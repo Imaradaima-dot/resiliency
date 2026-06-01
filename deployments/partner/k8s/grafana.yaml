@@ -1,0 +1,164 @@
+# k8s/grafana.yaml
+# Deploys Grafana to the resiliency namespace on GKE.
+#
+# Mounts:
+#   - grafana-dashboards              → /etc/grafana/dashboards/
+#   - grafana-provisioning-dashboards → /etc/grafana/provisioning/dashboards/
+#   - grafana-provisioning-datasources→ /etc/grafana/provisioning/datasources/
+#
+# ── One-time setup ────────────────────────────────────────────────────────────
+#
+#  1. Create ConfigMaps from local files:
+#       kubectl create configmap grafana-dashboards \
+#         --from-file=grafana/dashboards/ -n resiliency
+#
+#       kubectl create configmap grafana-provisioning-dashboards \
+#         --from-file=grafana/provisioning/dashboards/ -n resiliency
+#
+#       kubectl create configmap grafana-provisioning-datasources \
+#         --from-file=grafana/provisioning/datasources/ -n resiliency
+#
+#  2. Get your IPv4 and replace 157.50.106.37 below:
+#       curl -s -4 https://ifconfig.me
+#
+#  3. Apply:
+#       kubectl apply -f k8s/grafana.yaml
+#
+#  4. Get external IP (takes 1-2 min):
+#       kubectl get svc grafana -n resiliency -w
+#
+#  5. Open: http://<EXTERNAL-IP>:3000  (admin / admin — change on first login)
+#
+#  To update dashboards after editing JSON files:
+#       kubectl create configmap grafana-dashboards \
+#         --from-file=grafana/dashboards/ -n resiliency \
+#         --dry-run=client -o yaml | kubectl apply -f -
+
+---
+# ── Grafana ConfigMap (env-level config) ──────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: resiliency
+data:
+  GF_SERVER_HTTP_PORT: "3000"
+  GF_AUTH_ANONYMOUS_ENABLED: "false"
+  GF_SECURITY_ADMIN_USER: "admin"
+  GF_INSTALL_PLUGINS: "yesoreyeram-infinity-datasource"   # installs Infinity on startup
+  GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/etc/grafana/dashboards/region_health.json"
+  GF_LOG_LEVEL: "warn"
+
+---
+# ── Grafana Deployment ────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: resiliency
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472      # grafana gid in official image
+        runAsUser: 472    # grafana uid in official image
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.4.2
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: grafana-config
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"   # change after first login
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: dashboard-weather
+              mountPath: /etc/grafana/dashboards/weather.json
+              subPath: weather.json
+              readOnly: true
+            - name: dashboard-region
+              mountPath: /etc/grafana/dashboards/region_health.json
+              subPath: region_health.json
+              readOnly: true
+            - name: dashboard-events
+              mountPath: /etc/grafana/dashboards/event_types.json
+              subPath: event_types.json
+              readOnly: true
+            - name: provisioning-dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            - name: provisioning-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+      volumes:
+        - name: grafana-storage
+          emptyDir: {}
+        - name: dashboard-weather
+          configMap:
+            name: grafana-dashboard-weather
+        - name: dashboard-region
+          configMap:
+            name: grafana-dashboard-region
+        - name: dashboard-events
+          configMap:
+            name: grafana-dashboard-events
+        - name: provisioning-dashboards
+          configMap:
+            name: grafana-provisioning-dashboards
+        - name: provisioning-datasources
+          configMap:
+            name: grafana-provisioning-datasources
+
+---
+# ── Grafana Service — LoadBalancer, IP-whitelisted ────────────────────────────
+# Replace 157.50.106.37 with: curl -s -4 https://ifconfig.me
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: resiliency
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - "157.50.106.37/32"      # your machine IPv4 — curl -s -4 https://ifconfig.me
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

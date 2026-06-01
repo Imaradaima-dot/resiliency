@@ -1,0 +1,86 @@
+# k8s/mongo-add-member.yaml
+#
+# Run this AFTER scaling up the StatefulSet to add the new pod to the replica set.
+#
+# Workflow to add a new mongo node:
+#
+#   Step 1 — Increase replicas in mongo.yaml (change replicas: 3 to replicas: 4)
+#            kubectl apply -f k8s/mongo.yaml
+#
+#   Step 2 — Wait for new pod to be Running
+#            kubectl get pods -n resiliency -w
+#
+#   Step 3 — Edit NEW_MEMBER_ID and NEW_MEMBER_HOST below to match the new pod
+#            e.g. for 4th pod: _id=3, host=mongo-3.mongo.resiliency.svc.cluster.local:27017
+#
+#   Step 4 — Apply this file
+#            kubectl delete job mongo-add-member -n resiliency  (if exists)
+#            kubectl apply -f k8s/mongo-add-member.yaml
+#
+#   Step 5 — Verify new member joined
+#            kubectl logs job/mongo-add-member -n resiliency
+#            kubectl exec -it mongo-0 -n resiliency -- mongosh --eval "rs.status().members.forEach(m => print(m.name, m.stateStr))"
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# EDIT THESE VALUES before applying:
+#
+#   NEW_MEMBER_ID    → next available _id (e.g. 3 for 4th node, 4 for 5th node)
+#   NEW_MEMBER_HOST  → pod DNS name      (e.g. mongo-3.mongo.resiliency.svc.cluster.local:27017)
+#   NEW_MEMBER_PRIORITY → 5 for data node, 0 for arbiter (votes only)
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-add-member
+  namespace: resiliency
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+
+      initContainers:
+        # Wait for the new pod to be fully ready before adding it to the RS
+        - name: wait-for-new-member
+          image: mongo:7.0
+          command:
+            - bash
+            - "-c"
+            - |
+              NEW_HOST="mongo-3.mongo.resiliency.svc.cluster.local:27017"   # EDIT THIS
+              echo "[wait] Waiting for ${NEW_HOST} to be ready..."
+              until mongosh --host ${NEW_HOST} --eval "db.adminCommand('ping').ok" --quiet; do
+                echo "[wait] Not ready yet, retrying in 10s..."
+                sleep 10
+              done
+              echo "[wait] ${NEW_HOST} is ready."
+
+      containers:
+        - name: add-member
+          image: mongo:7.0
+          command:
+            - mongosh
+            - "--host"
+            - "mongo-0.mongo.resiliency.svc.cluster.local:27017"   # primary
+            - "--eval"
+            - |
+              // ── EDIT THESE THREE VALUES ──────────────────────────────────
+              var NEW_ID       = 3;                                                              // next _id
+              var NEW_HOST     = "mongo-3.mongo.resiliency.svc.cluster.local:27017";             // new pod
+              var NEW_PRIORITY = 5;                                                              // 5=data, 0=arbiter
+              // ─────────────────────────────────────────────────────────────
+
+              print("[add-member] Current replica set members:");
+              rs.status().members.forEach(function(m) {
+                print("  _id=" + m._id + "  host=" + m.name + "  state=" + m.stateStr);
+              });
+
+              print("[add-member] Adding new member: " + NEW_HOST);
+              var result = rs.add({ host: NEW_HOST, priority: NEW_PRIORITY });
+              print("[add-member] rs.add result: " + JSON.stringify(result));
+
+              print("[add-member] Updated replica set members:");
+              rs.status().members.forEach(function(m) {
+                print("  _id=" + m._id + "  host=" + m.name + "  state=" + m.stateStr);
+              });
