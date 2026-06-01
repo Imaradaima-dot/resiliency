@@ -1,0 +1,287 @@
+# k8s/deployment.yaml
+# Kubernetes manifests for the Global Service Resiliency project.
+#
+# Deploys three workloads to GKE:
+#   1. ingestor      — Deployment with 2 replicas (always-on ingestion)
+#   2. healthcheck   — Deployment with 2 replicas + HPA
+#   3. eda-cronjob   — CronJob running every 15 minutes
+#
+# Before applying:
+#   1. Create the resiliency-secrets Secret (see below)
+#   2. kubectl apply -f k8s/deployment.yaml
+#   3. kubectl apply -f k8s/hpa.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resiliency
+
+---
+# Secret — create manually:
+#   kubectl create secret generic resiliency-secrets \
+#     --from-literal=MONGO_URI="replace_with_mongodb_connection_string" \
+#     --from-literal=GITHUB_TOKEN="replace_with_github_token" \
+#     --from-literal=OWM_API_KEY="replace_with_openweathermap_api_key" \
+#     -n resiliency
+apiVersion: v1
+kind: Secret
+metadata:
+  name: resiliency-secrets
+  namespace: resiliency
+type: Opaque
+# data: base64-encoded values added by kubectl create secret above
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resiliency-config
+  namespace: resiliency
+data:
+  MONGO_DATABASE: "resiliency"
+  MONGO_WRITE_CONCERN: "majority"
+  MONGO_READ_PREF: "nearest"
+  # MONGO_URI comes from resiliency-secrets (set via kubectl create secret)
+  # Internal K8s DNS — all 3 StatefulSet pods addressed by stable name:
+  #   mongo-0.mongo.resiliency.svc.cluster.local
+  #   mongo-1.mongo.resiliency.svc.cluster.local
+  #   mongo-2.mongo.resiliency.svc.cluster.local
+  GITHUB_PAGES: "10"
+  GITHUB_PER_PAGE: "100"
+  INGEST_INTERVAL: "5m"
+  HEALTH_INTERVAL: "30s"
+  HEALTH_PORT: "8080"
+  OFFLINE_MODE: "false"
+  RAW_DATA_DIR: "/app/data/raw"
+
+---
+# ── Ingestor Deployment ────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestor-us-east
+  namespace: resiliency
+  labels:
+    app: ingestor-us-east
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestor-us-east
+  template:
+    metadata:
+      labels:
+        app: ingestor-us-east
+    spec:
+      containers:
+        - name: ingestor-us-east
+          image: gcr.io/msds-432-g2-497302/resiliency-ingestor:latest
+          imagePullPolicy: Always
+          env:
+            - name: REGION
+              value: "us-east"
+          envFrom:
+            - configMapRef:
+                name: resiliency-config
+            - secretRef:
+                name: resiliency-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          emptyDir: {}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestor-us-west
+  namespace: resiliency
+  labels:
+    app: ingestor-us-west
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestor-us-west
+  template:
+    metadata:
+      labels:
+        app: ingestor-us-west
+    spec:
+      containers:
+        - name: ingestor-us-west
+          image: gcr.io/msds-432-g2-497302/resiliency-ingestor:latest
+          imagePullPolicy: Always
+          env:
+            - name: REGION
+              value: "us-west"
+          envFrom:
+            - configMapRef:
+                name: resiliency-config
+            - secretRef:
+                name: resiliency-secrets
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+      volumes:
+        - name: data
+          emptyDir: {}
+
+---
+# ── Health-Check Deployment ────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthcheck
+  namespace: resiliency
+  labels:
+    app: healthcheck
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: healthcheck
+  template:
+    metadata:
+      labels:
+        app: healthcheck
+    spec:
+      containers:
+        - name: healthcheck
+          image: gcr.io/msds-432-g2-497302/resiliency-healthcheck:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: resiliency-config
+            - secretRef:
+                name: resiliency-secrets
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: healthcheck
+  namespace: resiliency
+spec:
+  selector:
+    app: healthcheck
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - "157.50.106.37/32"    # your machine IPv4 — update with: curl -s -4 https://ifconfig.me
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+
+---
+# ── MongoDB External LoadBalancer ──────────────────────────────────────────────
+# Exposes MongoDB via LoadBalancer, IP-whitelisted to your machine.
+# Compass URI: mongodb://<EXTERNAL-IP>:27017/?replicaSet=rs0&directConnection=true
+# Get IP: kubectl get svc mongo-external -n resiliency
+# Update IP: curl -s -4 https://ifconfig.me
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-external
+  namespace: resiliency
+spec:
+  selector:
+    app: mongo
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - "157.50.106.37/32"      # replace: curl -s -4 https://ifconfig.me
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+
+---
+# ── EDA CronJob — runs every 15 minutes (NFR per architecture) ────────────────
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: eda
+  namespace: resiliency
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: eda
+              image: gcr.io/msds-432-g2-497302/resiliency-eda:latest
+              imagePullPolicy: Always
+              envFrom:
+                - configMapRef:
+                    name: resiliency-config
+                - secretRef:
+                    name: resiliency-secrets
+              volumeMounts:
+                - name: data
+                  mountPath: /app/data
+          volumes:
+            - name: data
+              emptyDir: {}
+
+---
+# ── Horizontal Pod Autoscaler for healthcheck ─────────────────────────────────
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: healthcheck-hpa
+  namespace: resiliency
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: healthcheck
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

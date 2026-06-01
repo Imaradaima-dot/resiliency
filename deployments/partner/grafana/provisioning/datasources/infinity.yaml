@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  - name: Resiliency-API
+    uid: resiliency-api
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      # Whitelist the full host:port so the plugin allows requests to it.
+      # Panels use the full URL http://34.24.231.96:32651/api/... directly —
+      # no base_url prefix is needed.
+      allowed_hosts:
+        - "http://healthcheck.resiliency.svc.cluster.local:8080"

@@ -1,0 +1,299 @@
+version: "3.9"
+
+# =============================================================================
+# Multi-Region Active-Active Architecture (local simulation)
+#
+# 4 MongoDB nodes — one per region (us-east, us-west, europe, asia)
+# Replica set: us-east = primary, us-west + europe = secondaries, asia = arbiter
+#
+# Regional ingestors: each tagged with their region, writes to local node
+# Health checker:     monitors all 4 nodes, writes RPT-04 per region
+# Traffic router:     simulated by healthcheck service on :8080
+#
+# Port map:
+#   mongo-us-east  → 27017   ingestor-us-east  (no host port)
+#   mongo-us-west  → 27018   ingestor-us-west  (no host port)
+#   mongo-europe   → 27019   ingestor-europe   (no host port)
+#   mongo-asia     → 27020   (arbiter, no ingestor)
+#   healthcheck    → 8080
+# =============================================================================
+
+x-mongo-common: &mongo-common
+  image: mongo:7.0
+  restart: unless-stopped
+  networks:
+    - resiliency-net
+
+x-ingestor-common: &ingestor-common
+  build:
+    context: .
+    args:
+      SERVICE: ingestor
+  restart: unless-stopped
+  networks:
+    - resiliency-net
+  volumes:
+    - ./data:/app/data
+  environment: &ingestor-env
+    MONGO_DATABASE: resiliency
+    MONGO_WRITE_CONCERN: majority
+    MONGO_READ_PREF: nearest
+    GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    GITHUB_PAGES: "2"
+    GITHUB_PER_PAGE: "100"
+    OWM_API_KEY: ${OWM_API_KEY:-}
+    INGEST_INTERVAL: "5m"
+    OFFLINE_MODE: ${OFFLINE_MODE:-false}
+    RAW_DATA_DIR: /app/data/raw
+
+services:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # MONGODB NODES — one per region
+  # Each uses directConnection so it joins the replica set correctly
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  mongo-us-east:
+    <<: *mongo-common
+    container_name: mongo-us-east
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-us-east:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27017", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mongo-us-west:
+    <<: *mongo-common
+    container_name: mongo-us-west
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo-us-west:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27017", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mongo-europe:
+    <<: *mongo-common
+    container_name: mongo-europe
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo-europe:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27017", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mongo-asia:
+    <<: *mongo-common
+    container_name: mongo-asia
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongo-asia:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "27017", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # REPLICA SET INITIALIZER
+  # Waits for all 4 nodes to be healthy, then initialises the replica set.
+  # us-east = primary (priority 10), us-west + europe = secondaries (priority 5)
+  # asia    = arbiter (priority 0, votes only — does not hold data)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  mongo-init:
+    image: mongo:7.0
+    container_name: mongo-init
+    networks:
+      - resiliency-net
+    depends_on:
+      mongo-us-east:
+        condition: service_healthy
+      mongo-us-west:
+        condition: service_healthy
+      mongo-europe:
+        condition: service_healthy
+      mongo-asia:
+        condition: service_healthy
+    command: >
+      mongosh --host mongo-us-east:27017 --eval "
+        try {
+          rs.status();
+          print('Replica set already initialised');
+        } catch(e) {
+          rs.initiate({
+            _id: 'rs0',
+            members: [
+              { _id: 0, host: 'mongo-us-east:27017', priority: 10 },
+              { _id: 1, host: 'mongo-us-west:27017', priority: 5  },
+              { _id: 2, host: 'mongo-europe:27017',  priority: 5  },
+              { _id: 3, host: 'mongo-asia:27017',    priority: 0, votes: 1 }
+            ]
+          });
+          print('Replica set initialised with 4 nodes');
+        }
+      "
+    restart: "no"
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # REGIONAL INGESTORS
+  # Each ingestor connects to its local MongoDB node (lowest latency).
+  # All write with w:majority so data reaches all 3 data-bearing nodes.
+  # REGION env var tags every weather + event record with its source region.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  ingestor-us-east:
+    <<: *ingestor-common
+    container_name: ingestor-us-east
+    depends_on:
+      mongo-us-east:
+        condition: service_healthy
+    environment:
+      <<: *ingestor-env
+      REGION: us-east
+      # directConnection=true — talks only to the local node; replica set
+      # replication handles propagation to other regions automatically.
+      MONGO_URI: mongodb://mongo-us-east:27017/?replicaSet=rs0&directConnection=true
+
+  ingestor-us-west:
+    <<: *ingestor-common
+    container_name: ingestor-us-west
+    depends_on:
+      mongo-us-west:
+        condition: service_healthy
+    environment:
+      <<: *ingestor-env
+      REGION: us-west
+      MONGO_URI: mongodb://mongo-us-west:27017/?replicaSet=rs0&directConnection=true
+
+  ingestor-europe:
+    <<: *ingestor-common
+    container_name: ingestor-europe
+    depends_on:
+      mongo-europe:
+        condition: service_healthy
+    environment:
+      <<: *ingestor-env
+      REGION: europe
+      MONGO_URI: mongodb://mongo-europe:27017/?replicaSet=rs0&directConnection=true
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # HEALTH-CHECK SERVICE
+  # Monitors all 4 MongoDB nodes independently.
+  # Connects to the full replica set URI so the driver can route to nearest.
+  # Exposes /livez, /readyz, /status on :8080
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  healthcheck:
+    build:
+      context: .
+      args:
+        SERVICE: healthcheck
+    container_name: resiliency-healthcheck
+    networks:
+      - resiliency-net
+    depends_on:
+      mongo-us-east:
+        condition: service_healthy
+    environment:
+      # Full replica set URI — driver auto-discovers all members
+      MONGO_URI: mongodb://mongo-us-east:27017,mongo-us-west:27017,mongo-europe:27017,mongo-asia:27017/?replicaSet=rs0
+      MONGO_DATABASE: resiliency
+      MONGO_WRITE_CONCERN: majority
+      MONGO_READ_PREF: nearest
+      HEALTH_INTERVAL: "15s"
+      HEALTH_PORT: "8080"
+      # Comma-separated list of region nodes to ping individually (RPT-04)
+      REGION_NODES: "us-east:mongo-us-east:27017,us-west:mongo-us-west:27017,europe:mongo-europe:27017,asia:mongo-asia:27017"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # EDA TOOL  (run manually)
+  # docker-compose --profile tools run --rm eda
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  eda:
+    build:
+      context: .
+      args:
+        SERVICE: eda
+    container_name: resiliency-eda
+    networks:
+      - resiliency-net
+    depends_on:
+      mongo-us-east:
+        condition: service_healthy
+    environment:
+      MONGO_URI: mongodb://mongo-us-east:27017,mongo-us-west:27017,mongo-europe:27017,mongo-asia:27017/?replicaSet=rs0
+      MONGO_DATABASE: resiliency
+      MONGO_READ_PREF: nearest
+    volumes:
+      - ./data:/app/data
+    profiles:
+      - tools
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # GRAFANA — Dashboards for serving zone data
+  # Opens at http://localhost:3000  (admin / admin)
+  # Datasource: Infinity plugin → calls http://healthcheck:8080/api/*
+  # Pre-built dashboards:
+  #   RPT-01  GitHub Event Distribution  → /api/event-types
+  #   RPT-03  Regional Weather           → /api/weather
+  #   RPT-04  Region Health Monitor      → /api/region-health
+  # ═══════════════════════════════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: resiliency-grafana
+    networks:
+      - resiliency-net
+    depends_on:
+      - healthcheck
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: yesoreyeram-infinity-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+
+
+networks:
+  resiliency-net:
+    driver: bridge
+
+volumes:
+  mongo-us-east:
+  mongo-us-west:
+  mongo-europe:
+  mongo-asia:
+  grafana-data:

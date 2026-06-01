@@ -1,0 +1,804 @@
+# k8s/airflow.yaml
+# Deploys Apache Airflow (LocalExecutor) to the resiliency namespace on GKE.
+#
+# Components:
+#   - airflow-postgres   — StatefulSet  (Airflow metadata DB)
+#   - airflow-scheduler  — Deployment   (task scheduler)
+#   - airflow-webserver  — Deployment   (UI on port 8081)
+#
+# Design decisions:
+#   - DAGs are stored in a ConfigMap and mounted read-only into both pods.
+#     This avoids ReadWriteMany PVC (requires Filestore) while keeping DAGs
+#     visible in both the scheduler and the webserver.
+#   - Logs use emptyDir (ephemeral). For persistent logs, swap to a
+#     ReadWriteMany PVC backed by GCP Filestore.
+#   - Postgres data uses a ReadWriteOnce PVC (standard-rwo, GCE PD).
+#
+# ── One-time setup ────────────────────────────────────────────────────────────
+#
+#  1. Generate a Fernet key:
+#       python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
+#  2. Create the secret:
+#       kubectl create secret generic airflow-secrets \
+#         --from-literal=AIRFLOW__CORE__FERNET_KEY="<fernet-key>" \
+#         --from-literal=AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="postgresql+psycopg2://airflow:airflow@airflow-postgres-0.airflow-postgres.resiliency.svc.cluster.local:5432/airflow" \
+#         --from-literal=AIRFLOW__WEBSERVER__SECRET_KEY="<random-32-char-string>" \
+#         --from-literal=POSTGRES_PASSWORD="airflow" \
+#         -n resiliency
+#
+#  3. Apply:
+#       kubectl apply -f k8s/airflow.yaml
+#
+#  4. Create admin user (after webserver pod is Running):
+#       kubectl exec -n resiliency deploy/airflow-webserver -- \
+#         airflow users create --username admin --password admin \
+#         --firstname Admin --lastname User --role Admin --email admin@example.com
+#
+#  5. Access UI:
+#       NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
+#       NODE_PORT=$(kubectl get svc airflow-webserver -n resiliency -o jsonpath='{.spec.ports[0].nodePort}')
+#       echo "http://$NODE_IP:$NODE_PORT"
+
+---
+# ── Airflow ConfigMap ─────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-config
+  namespace: resiliency
+data:
+  AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__DAGS_FOLDER: "/opt/airflow/dags"
+  AIRFLOW__CORE__LOGS_FOLDER: "/opt/airflow/logs"
+  AIRFLOW__WEBSERVER__WEB_SERVER_PORT: "8081"
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+  AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30"
+  AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
+  AIRFLOW__KUBERNETES_EXECUTOR__NAMESPACE: "resiliency"
+  AIRFLOW__KUBERNETES_EXECUTOR__IN_CLUSTER: "true"
+  AIRFLOW__WEBSERVER__WORKERS: "2"            # gunicorn workers — reduce memory pressure
+  AIRFLOW__WEBSERVER__WORKER_TIMEOUT: "120"   # seconds before worker is killed/replaced
+
+---
+# ── DAG ConfigMap — mounts the pipeline DAG into both scheduler & webserver ──
+# To update a DAG: edit the file below and run `kubectl apply -f k8s/airflow.yaml`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-dags
+  namespace: resiliency
+data:
+  resiliency_pipeline.py: |
+    """
+    resiliency_pipeline.py
+
+    Orchestrates the Global Service Resiliency data pipeline on GKE.
+
+    Schedule: every 30 minutes
+      1. ingest_us_east   — runs resiliency-ingestor for us-east  (parallel)
+      2. ingest_us_west   — runs resiliency-ingestor for us-west  (parallel)
+      3. ingest_europe    — runs resiliency-ingestor for europe    (parallel)
+      4. run_eda          — runs resiliency-eda after all ingestors finish
+    """
+    from datetime import datetime, timedelta
+    from airflow import DAG
+    from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
+    from kubernetes.client import models as k8s
+
+    default_args = {
+        "owner": "resiliency-team",
+        "retries": 2,
+        "retry_delay": timedelta(minutes=5),
+        "email_on_failure": False,
+    }
+
+    _env_from = [
+        k8s.V1EnvFromSource(config_map_ref=k8s.V1ConfigMapEnvSource(name="resiliency-config")),
+        k8s.V1EnvFromSource(secret_ref=k8s.V1SecretEnvSource(name="resiliency-secrets")),
+    ]
+
+    _ingestor_resources = k8s.V1ResourceRequirements(
+        requests={"cpu": "100m", "memory": "128Mi"},
+        limits={"cpu": "500m", "memory": "512Mi"},
+    )
+
+    _eda_resources = k8s.V1ResourceRequirements(
+        requests={"cpu": "200m", "memory": "256Mi"},
+        limits={"cpu": "1000m", "memory": "1Gi"},
+    )
+
+    with DAG(
+        dag_id="resiliency_pipeline",
+        description="Ingest weather data for all regions then run EDA",
+        schedule="*/30 * * * *",
+        start_date=datetime(2026, 5, 30),
+        catchup=False,
+        default_args=default_args,
+        tags=["resiliency", "ingestion", "eda"],
+    ) as dag:
+
+        def make_ingestor_task(region: str) -> KubernetesPodOperator:
+            return KubernetesPodOperator(
+                task_id=f"ingest_{region.replace('-', '_')}",
+                name=f"ingestor-{region}",   # static — random_name_suffix adds unique id
+                namespace="resiliency",
+                image="gcr.io/msds-432-g2-497302/resiliency-ingestor:latest",
+                image_pull_policy="Always",
+                env_from=_env_from,
+                env_vars=[k8s.V1EnvVar(name="REGION", value=region)],
+                container_resources=_ingestor_resources,
+                is_delete_operator_pod=True,
+                random_name_suffix=True,
+                get_logs=True,
+                in_cluster=True,
+            )
+
+        ingest_us_east = make_ingestor_task("us-east")
+        ingest_us_west = make_ingestor_task("us-west")
+        ingest_europe  = make_ingestor_task("europe")
+
+        run_eda = KubernetesPodOperator(
+            task_id="run_eda",
+            name="resiliency-eda",           # static — random_name_suffix adds unique id
+            namespace="resiliency",
+            image="gcr.io/msds-432-g2-497302/resiliency-eda:latest",
+            image_pull_policy="Always",
+            env_from=_env_from,
+            container_resources=_eda_resources,
+            is_delete_operator_pod=True,
+            random_name_suffix=True,
+            get_logs=True,
+            in_cluster=True,
+        )
+
+        [ingest_us_east, ingest_us_west, ingest_europe] >> run_eda
+
+---
+# ── Deployment DAG ConfigMap ──────────────────────────────────────────────────
+# The deploy DAG is loaded via kubectl cp (see deploy instructions).
+# This ConfigMap is intentionally minimal to avoid TLS payload limits.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-deploy-dags
+  namespace: resiliency
+data:
+  resiliency_deploy.py: |
+    """
+    resiliency_deploy.py
+
+    Deployment orchestration DAG — creates resources if they don't exist,
+    triggers a rolling restart if they do.
+
+    Deployment order:
+      1. mongo        — StatefulSet  (skip if not found — needs mongo.yaml applied first)
+      2. ingestors    — us-east + us-west in parallel
+      3. healthcheck  — API layer
+      4. eda          — CronJob suspend/resume
+      5. smoke_test   — hits /readyz on the healthcheck service
+    """
+    from datetime import datetime, timedelta, timezone
+    from airflow import DAG
+    from airflow.operators.python import PythonOperator
+    from kubernetes import client, config
+    from kubernetes.client.rest import ApiException
+    import time
+
+    default_args = {
+        "owner": "resiliency-team",
+        "retries": 1,
+        "retry_delay": timedelta(minutes=2),
+        "email_on_failure": False,
+    }
+
+    NAMESPACE = "resiliency"
+    GCR_PREFIX = "gcr.io/msds-432-g2-497302"
+
+    def _clients():
+        config.load_incluster_config()
+        return client.AppsV1Api(), client.BatchV1Api()
+
+    def _restart_patch():
+        """Patch that triggers a rolling restart via annotation."""
+        return {"spec": {"template": {"metadata": {"annotations": {
+            "kubectl.kubernetes.io/restartedAt": datetime.now(timezone.utc).isoformat()
+        }}}}}
+
+    def _ingestor_spec(region):
+        name = f"ingestor-{region}"
+        return client.V1Deployment(
+            metadata=client.V1ObjectMeta(name=name, namespace=NAMESPACE,
+                                         labels={"app": name}),
+            spec=client.V1DeploymentSpec(
+                replicas=1,
+                selector=client.V1LabelSelector(match_labels={"app": name}),
+                template=client.V1PodTemplateSpec(
+                    metadata=client.V1ObjectMeta(labels={"app": name}),
+                    spec=client.V1PodSpec(
+                        containers=[client.V1Container(
+                            name=name,
+                            image=f"{GCR_PREFIX}/resiliency-ingestor:latest",
+                            image_pull_policy="Always",
+                            env=[client.V1EnvVar(name="REGION", value=region)],
+                            env_from=[
+                                client.V1EnvFromSource(config_map_ref=client.V1ConfigMapEnvSource(name="resiliency-config")),
+                                client.V1EnvFromSource(secret_ref=client.V1SecretEnvSource(name="resiliency-secrets")),
+                            ],
+                            resources=client.V1ResourceRequirements(
+                                requests={"cpu": "100m", "memory": "128Mi"},
+                                limits={"cpu": "500m", "memory": "512Mi"},
+                            ),
+                            volume_mounts=[client.V1VolumeMount(name="data", mount_path="/app/data")],
+                        )],
+                        volumes=[client.V1Volume(name="data", empty_dir=client.V1EmptyDirVolumeSource())],
+                    )
+                )
+            )
+        )
+
+    def _healthcheck_spec():
+        return client.V1Deployment(
+            metadata=client.V1ObjectMeta(name="healthcheck", namespace=NAMESPACE,
+                                         labels={"app": "healthcheck"}),
+            spec=client.V1DeploymentSpec(
+                replicas=2,
+                selector=client.V1LabelSelector(match_labels={"app": "healthcheck"}),
+                template=client.V1PodTemplateSpec(
+                    metadata=client.V1ObjectMeta(labels={"app": "healthcheck"}),
+                    spec=client.V1PodSpec(
+                        containers=[client.V1Container(
+                            name="healthcheck",
+                            image=f"{GCR_PREFIX}/resiliency-healthcheck:latest",
+                            image_pull_policy="Always",
+                            ports=[client.V1ContainerPort(container_port=8080)],
+                            env_from=[
+                                client.V1EnvFromSource(config_map_ref=client.V1ConfigMapEnvSource(name="resiliency-config")),
+                                client.V1EnvFromSource(secret_ref=client.V1SecretEnvSource(name="resiliency-secrets")),
+                            ],
+                            resources=client.V1ResourceRequirements(
+                                requests={"cpu": "50m", "memory": "64Mi"},
+                                limits={"cpu": "200m", "memory": "128Mi"},
+                            ),
+                            liveness_probe=client.V1Probe(
+                                http_get=client.V1HTTPGetAction(path="/livez", port=8080),
+                                initial_delay_seconds=5, period_seconds=10,
+                            ),
+                            readiness_probe=client.V1Probe(
+                                http_get=client.V1HTTPGetAction(path="/readyz", port=8080),
+                                initial_delay_seconds=5, period_seconds=10,
+                            ),
+                        )],
+                    )
+                )
+            )
+        )
+
+    def deploy_or_restart_deployment(name, spec_fn, **kwargs):
+        """Create deployment if missing, otherwise trigger rolling restart."""
+        apps_v1, _ = _clients()
+        try:
+            apps_v1.read_namespaced_deployment(name, NAMESPACE)
+            print(f"Deployment '{name}' exists — triggering rolling restart")
+            apps_v1.patch_namespaced_deployment(name, NAMESPACE, _restart_patch())
+        except ApiException as e:
+            if e.status == 404:
+                print(f"Deployment '{name}' not found — creating it now")
+                apps_v1.create_namespaced_deployment(NAMESPACE, spec_fn())
+                print(f"Deployment '{name}' created")
+            else:
+                raise
+
+    def restart_statefulset(name, **kwargs):
+        """Rolling restart StatefulSet. Skips if not found (needs mongo.yaml)."""
+        apps_v1, _ = _clients()
+        try:
+            apps_v1.read_namespaced_stateful_set(name, NAMESPACE)
+            print(f"StatefulSet '{name}' exists — triggering rolling restart")
+            apps_v1.patch_namespaced_stateful_set(name, NAMESPACE, _restart_patch())
+        except ApiException as e:
+            if e.status == 404:
+                print(f"StatefulSet '{name}' not found — apply k8s/mongo.yaml first. Skipping.")
+            else:
+                raise
+
+    def bounce_cronjob(name, **kwargs):
+        """Suspend then resume CronJob to force fresh image on next run."""
+        _, batch_v1 = _clients()
+        try:
+            batch_v1.read_namespaced_cron_job(name, NAMESPACE)
+            print(f"CronJob '{name}' found — suspending")
+            batch_v1.patch_namespaced_cron_job(name, NAMESPACE, {"spec": {"suspend": True}})
+            time.sleep(3)
+            print(f"Resuming CronJob '{name}'")
+            batch_v1.patch_namespaced_cron_job(name, NAMESPACE, {"spec": {"suspend": False}})
+        except ApiException as e:
+            if e.status == 404:
+                print(f"CronJob '{name}' not found — skipping")
+            else:
+                raise
+
+    def wait_for_rollout(resource_type, resource_name, namespace=NAMESPACE, timeout=300, **kwargs):
+        """Poll until replicas are ready. Skips if resource doesn't exist."""
+        apps_v1, _ = _clients()
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                if resource_type == "deployment":
+                    obj = apps_v1.read_namespaced_deployment(resource_name, namespace)
+                else:
+                    obj = apps_v1.read_namespaced_stateful_set(resource_name, namespace)
+                ready   = obj.status.ready_replicas or 0
+                desired = obj.spec.replicas or 1
+                if ready >= desired:
+                    print(f"{resource_name}: {ready}/{desired} ready ✓")
+                    return
+                print(f"{resource_name}: {ready}/{desired} ready, waiting...")
+            except ApiException as e:
+                if e.status == 404:
+                    print(f"SKIP: '{resource_name}' not found")
+                    return
+                print(f"API error: {e}")
+            time.sleep(10)
+        raise TimeoutError(f"{resource_name} not ready within {timeout}s")
+
+    def smoke_test(**kwargs):
+        """Verify /readyz on the healthcheck service."""
+        import urllib.request
+        url = "http://healthcheck.resiliency.svc.cluster.local:8080/readyz"
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                body = resp.read().decode()
+                if resp.status == 200:
+                    print(f"Smoke test passed: {body}")
+                    return
+                raise ValueError(f"Unexpected status {resp.status}: {body}")
+        except Exception as e:
+            raise RuntimeError(f"Smoke test failed — {url}: {e}")
+
+    with DAG(
+        dag_id="resiliency_deploy",
+        description="Create or rolling-restart all resiliency services in order",
+        schedule=None,
+        start_date=datetime(2026, 5, 30),
+        catchup=False,
+        default_args=default_args,
+        tags=["resiliency", "deploy"],
+    ) as dag:
+
+        # ── Stage 1: MongoDB ───────────────────────────────────────────────
+        t_mongo = PythonOperator(
+            task_id="deploy_mongo",
+            python_callable=restart_statefulset,
+            op_args=["mongo"],
+        )
+        t_wait_mongo = PythonOperator(
+            task_id="wait_mongo",
+            python_callable=wait_for_rollout,
+            op_args=["statefulset", "mongo"],
+        )
+
+        # ── Stage 2: Ingestors (parallel) ─────────────────────────────────
+        t_ingestor_east = PythonOperator(
+            task_id="deploy_ingestor_us_east",
+            python_callable=deploy_or_restart_deployment,
+            op_args=["ingestor-us-east", lambda: _ingestor_spec("us-east")],
+        )
+        t_ingestor_west = PythonOperator(
+            task_id="deploy_ingestor_us_west",
+            python_callable=deploy_or_restart_deployment,
+            op_args=["ingestor-us-west", lambda: _ingestor_spec("us-west")],
+        )
+        t_wait_east = PythonOperator(
+            task_id="wait_ingestor_us_east",
+            python_callable=wait_for_rollout,
+            op_args=["deployment", "ingestor-us-east"],
+        )
+        t_wait_west = PythonOperator(
+            task_id="wait_ingestor_us_west",
+            python_callable=wait_for_rollout,
+            op_args=["deployment", "ingestor-us-west"],
+        )
+
+        # ── Stage 3: Healthcheck ───────────────────────────────────────────
+        t_healthcheck = PythonOperator(
+            task_id="deploy_healthcheck",
+            python_callable=deploy_or_restart_deployment,
+            op_args=["healthcheck", _healthcheck_spec],
+        )
+        t_wait_health = PythonOperator(
+            task_id="wait_healthcheck",
+            python_callable=wait_for_rollout,
+            op_args=["deployment", "healthcheck"],
+        )
+
+        # ── Stage 4: EDA CronJob ───────────────────────────────────────────
+        t_eda = PythonOperator(
+            task_id="bounce_eda_cronjob",
+            python_callable=bounce_cronjob,
+            op_args=["eda"],
+        )
+
+        # ── Stage 5: Smoke test ────────────────────────────────────────────
+        t_smoke = PythonOperator(
+            task_id="smoke_test",
+            python_callable=smoke_test,
+        )
+
+        # ── Wiring ─────────────────────────────────────────────────────────
+        t_mongo >> t_wait_mongo
+        t_wait_mongo >> [t_ingestor_east, t_ingestor_west]
+        t_ingestor_east >> t_wait_east
+        t_ingestor_west >> t_wait_west
+        [t_wait_east, t_wait_west] >> t_healthcheck >> t_wait_health
+        t_wait_health >> t_eda >> t_smoke
+
+---
+# ── Postgres StatefulSet (Airflow metadata DB) ────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: airflow-postgres
+  namespace: resiliency
+spec:
+  serviceName: airflow-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-postgres
+  template:
+    metadata:
+      labels:
+        app: airflow-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              value: airflow
+            - name: POSTGRES_USER
+              value: airflow
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: airflow-secrets
+                  key: POSTGRES_PASSWORD
+            # Subdirectory avoids the lost+found conflict on GKE ext4 PVCs
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "airflow"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "airflow"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard-rwo
+        resources:
+          requests:
+            storage: 5Gi
+
+---
+# Headless service — stable pod DNS for StatefulSet
+# Pod reachable at: airflow-postgres-0.airflow-postgres.resiliency.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-postgres
+  namespace: resiliency
+spec:
+  selector:
+    app: airflow-postgres
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+# ── RBAC: scheduler needs to create/watch pods for KubernetesPodOperator ──────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: airflow
+  namespace: resiliency
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-pod-launcher
+  namespace: resiliency
+rules:
+  # Pod management — KubernetesPodOperator
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "delete", "patch"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  # Deployment management — deployment DAG
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  # CronJob management
+  - apiGroups: ["batch"]
+    resources: ["cronjobs", "jobs"]
+    verbs: ["get", "list", "watch", "patch", "update", "create", "delete"]
+  # ConfigMap / Secret reads — for rollout verification
+  - apiGroups: [""]
+    resources: ["configmaps", "services"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-pod-launcher
+  namespace: resiliency
+subjects:
+  - kind: ServiceAccount
+    name: airflow
+    namespace: resiliency
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: airflow-pod-launcher
+
+---
+# ── Airflow Scheduler ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: resiliency
+  labels:
+    app: airflow-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow-scheduler
+    spec:
+      serviceAccountName: airflow
+      securityContext:
+        runAsUser: 50000   # airflow uid in official image
+        fsGroup: 0         # airflow primary gid — makes mounted volumes group-writable
+      initContainers:
+        # Step 1: wait for Postgres to accept connections before migrating
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z airflow-postgres-0.airflow-postgres.resiliency.svc.cluster.local 5432; do
+                echo "waiting for postgres..."; sleep 3
+              done
+              echo "postgres is up"
+        # Step 2: copy ConfigMap files to a plain emptyDir so Airflow doesn't
+        # trip over ConfigMap's internal symlinks (the ..YYYY_MM_DD_... dirs).
+        - name: copy-dags
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cp /dags-src/*.py /opt/airflow/dags/
+              echo "DAGs copied:"
+              ls /opt/airflow/dags/
+          volumeMounts:
+            - name: dags-src
+              mountPath: /dags-src
+            - name: dags
+              mountPath: /opt/airflow/dags
+        # Step 3: run DB migrations (idempotent — safe to rerun on restart)
+        - name: db-migrate
+          image: apache/airflow:2.9.1
+          command: ["airflow", "db", "migrate"]
+          envFrom:
+            - configMapRef:
+                name: airflow-config
+            - secretRef:
+                name: airflow-secrets
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      containers:
+        - name: scheduler
+          image: apache/airflow:2.9.1
+          command: ["airflow", "scheduler"]
+          envFrom:
+            - configMapRef:
+                name: airflow-config
+            - secretRef:
+                name: airflow-secrets
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            exec:
+              command: ["airflow", "jobs", "check", "--job-type", "SchedulerJob", "--local"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+      volumes:
+        # ConfigMap staging — contains the symlink structure Airflow can't scan
+        - name: dags-src
+          projected:
+            sources:
+              - configMap:
+                  name: airflow-dags
+              - configMap:
+                  name: airflow-deploy-dags
+        # Plain emptyDir — copy-dags init container populates this with real files
+        - name: dags
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+---
+# ── Airflow Webserver ─────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: resiliency
+  labels:
+    app: airflow-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-webserver
+  template:
+    metadata:
+      labels:
+        app: airflow-webserver
+    spec:
+      serviceAccountName: airflow
+      securityContext:
+        runAsUser: 50000   # airflow uid in official image
+        fsGroup: 0         # airflow primary gid
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z airflow-postgres-0.airflow-postgres.resiliency.svc.cluster.local 5432; do
+                echo "waiting for postgres..."; sleep 3
+              done
+              echo "postgres is up"
+        - name: copy-dags
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cp /dags-src/*.py /opt/airflow/dags/
+              echo "DAGs copied:"
+              ls /opt/airflow/dags/
+          volumeMounts:
+            - name: dags-src
+              mountPath: /dags-src
+            - name: dags
+              mountPath: /opt/airflow/dags
+      containers:
+        - name: webserver
+          image: apache/airflow:2.9.1
+          command: ["airflow", "webserver"]
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: airflow-config
+            - secretRef:
+                name: airflow-secrets
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "1000m"
+              memory: "2Gi"
+          # startupProbe gates liveness/readiness — liveness won't fire until
+          # the webserver responds, no matter how long it takes (up to 20*15=300s).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 20       # 20 * 15s = 5 min max startup window
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+      volumes:
+        - name: dags-src
+          projected:
+            sources:
+              - configMap:
+                  name: airflow-dags
+              - configMap:
+                  name: airflow-deploy-dags
+        - name: dags
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+---
+# Expose Airflow UI via LoadBalancer (GKE managed, IP-whitelisted)
+# Update loadBalancerSourceRanges with your IP: curl -s -4 https://ifconfig.me
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver
+  namespace: resiliency
+spec:
+  selector:
+    app: airflow-webserver
+  type: LoadBalancer
+  loadBalancerSourceRanges:
+    - "157.50.106.37/32"       # replace with: curl -s -4 https://ifconfig.me
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081

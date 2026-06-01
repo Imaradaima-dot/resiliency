@@ -1,0 +1,147 @@
+# k8s/mongo.yaml
+# Deploys a 3-node MongoDB replica set inside GKE.
+# Mirrors the 4-container docker-compose setup but adapted for Kubernetes
+# using a StatefulSet (stable pod names) + Headless Service (DNS per pod).
+#
+# Pod DNS names (internal to cluster):
+#   mongo-0.mongo.resiliency.svc.cluster.local  ← primary
+#   mongo-1.mongo.resiliency.svc.cluster.local  ← secondary
+#   mongo-2.mongo.resiliency.svc.cluster.local  ← secondary
+#
+# MONGO_URI for your app:
+#   mongodb://mongo-0.mongo.resiliency.svc.cluster.local:27017,\
+#             mongo-1.mongo.resiliency.svc.cluster.local:27017,\
+#             mongo-2.mongo.resiliency.svc.cluster.local:27017\
+#             /?replicaSet=rs0
+
+---
+# Headless Service — gives each pod a stable DNS name
+# A headless service (clusterIP: None) lets pods address each other directly
+# by name: mongo-0.mongo, mongo-1.mongo, mongo-2.mongo
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: resiliency
+  labels:
+    app: mongo
+spec:
+  clusterIP: None          # headless — no load balancing, direct pod DNS
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+
+---
+# StatefulSet — gives pods stable names (mongo-0, mongo-1, mongo-2)
+# and stable persistent volumes that survive pod restarts
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  namespace: resiliency
+spec:
+  serviceName: mongo       # must match the headless service name above
+  replicas: 4
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: mongo
+          image: mongo:7.0
+          command:
+            - mongod
+            - "--replSet"
+            - rs0
+            - "--bind_ip_all"
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - "--eval"
+                - "db.adminCommand('ping').ok"
+                - "--quiet"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - "--eval"
+                - "db.adminCommand('ping').ok"
+                - "--quiet"
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+
+  # Each pod gets its own 10Gi persistent disk on GKE
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard-rwo   # GKE standard persistent disk
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+# Replica set initializer Job
+# Runs once after all 3 mongo pods are ready, initialises rs0 with
+# priority weights matching the docker-compose setup.
+# Job completes and stays in Completed state — safe to leave.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-rs-init
+  namespace: resiliency
+spec:
+  backoffLimit: 5          # retry up to 5 times if mongo isn't ready yet
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongo-init
+          image: mongo:7.0
+          command:
+            - mongosh
+            - "--host"
+            - "mongo-0.mongo.resiliency.svc.cluster.local:27017"
+            - "--eval"
+            - |
+              try {
+                rs.status();
+                print('Already initialised');
+              } catch(e) {
+                rs.initiate({
+                  _id: 'rs0',
+                  members: [
+                    { _id: 0, host: 'mongo-0.mongo.resiliency.svc.cluster.local:27017', priority: 10 },
+                    { _id: 1, host: 'mongo-1.mongo.resiliency.svc.cluster.local:27017', priority: 5  },
+                    { _id: 2, host: 'mongo-2.mongo.resiliency.svc.cluster.local:27017', priority: 5  },
+                    { _id: 3, host: 'mongo-3.mongo.resiliency.svc.cluster.local:27017', priority: 0, votes: 1 },
+                    { _id: 4, host: 'mayflower-happiest-saucy.ngrok-free.dev:27017', priority: 1}
+                  ]
+                });
+                print('Replica set initialised');
+              }
